@@ -1,0 +1,1474 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>胰岛素抵抗管理</title>
+<style>
+/* ===== Reset & Variables ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #F5F5F7;
+  --card: #FFFFFF;
+  --text: #1C1C1E;
+  --text-secondary: #6D6D72;
+  --text-tertiary: #AEAEB2;
+  --primary: #5B8C85;
+  --primary-light: #E8F4F2;
+  --safe: #6BAF92;
+  --safe-bg: #E8F8F0;
+  --warn: #E8A64C;
+  --warn-bg: #FDF6EC;
+  --danger: #D4786E;
+  --danger-bg: #FDF0EF;
+  --separator: #E5E5EA;
+  --tab-active: #5B8C85;
+  --tab-inactive: #8E8E93;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.06);
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Helvetica Neue', sans-serif;
+}
+html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+  padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+}
+
+/* ===== App Shell ===== */
+.app-header {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--card);
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
+  border-bottom: 0.5px solid var(--separator);
+  text-align: center;
+}
+.app-header h1 { font-size: 17px; font-weight: 600; color: var(--text); letter-spacing: -0.02em; }
+
+/* ===== Tab Bar ===== */
+.tab-bar {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+  background: var(--card);
+  border-top: 0.5px solid var(--separator);
+  display: flex;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.tab-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  padding: 8px 0 6px; cursor: pointer; transition: color 0.15s;
+  color: var(--tab-inactive); font-size: 10px; font-weight: 500;
+  -webkit-user-select: none; user-select: none;
+}
+.tab-item .tab-icon { font-size: 22px; margin-bottom: 2px; }
+.tab-item.active { color: var(--tab-active); }
+
+/* ===== Tab Panels ===== */
+.tab-panel { display: none; padding: 16px; animation: fadeIn 0.2s ease; }
+.tab-panel.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ===== Toast ===== */
+.toast {
+  position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 200;
+  background: var(--text); color: #fff; padding: 10px 20px; border-radius: 20px;
+  font-size: 14px; font-weight: 500; opacity: 0; pointer-events: none;
+  transition: opacity 0.3s ease; white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.toast.show { opacity: 1; }
+.toast.success { background: #5B8C85; }
+.toast.warning { background: #E8A64C; }
+.toast.error { background: #D4786E; }
+
+/* ===== Cards ===== */
+.card {
+  background: var(--card); border-radius: var(--radius);
+  padding: 16px; margin-bottom: 12px;
+  box-shadow: var(--shadow);
+}
+.card-title {
+  font-size: 15px; font-weight: 600; color: var(--text);
+  margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+}
+.card-title .icon { font-size: 20px; }
+
+/* ===== Daily Highlights ===== */
+.highlight-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 0; border-bottom: 0.5px solid var(--separator);
+}
+.highlight-item:last-child { border-bottom: none; }
+.highlight-dot {
+  width: 8px; height: 8px; border-radius: 50%; margin-top: 6px;
+  flex-shrink: 0;
+}
+.highlight-dot.green { background: var(--safe); }
+.highlight-dot.orange { background: var(--warn); }
+.highlight-dot.red { background: var(--danger); }
+.highlight-text { font-size: 14px; color: var(--text); line-height: 1.6; }
+
+/* ===== Food Search ===== */
+.search-box {
+  display: flex; align-items: center; background: var(--bg);
+  border-radius: 10px; padding: 10px 14px; margin-bottom: 12px;
+  border: 1.5px solid transparent; transition: border-color 0.2s;
+}
+.search-box:focus-within { border-color: var(--primary); background: var(--card); }
+.search-box .search-icon { font-size: 18px; color: var(--text-tertiary); margin-right: 8px; }
+.search-box input {
+  flex: 1; border: none; background: transparent; font-size: 16px;
+  font-family: var(--font); color: var(--text); outline: none;
+}
+.search-box input::placeholder { color: var(--text-tertiary); }
+.search-clear { font-size: 16px; color: var(--text-tertiary); cursor: pointer; padding: 2px 6px; display: none; }
+
+.category-filters {
+  display: flex; gap: 8px; margin-bottom: 14px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; padding-bottom: 4px;
+}
+.category-filters::-webkit-scrollbar { display: none; }
+.cat-chip {
+  flex-shrink: 0; padding: 6px 14px; border-radius: 20px;
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  background: var(--card); color: var(--text-secondary);
+  border: 1px solid var(--separator); transition: all 0.15s;
+  white-space: nowrap;
+}
+.cat-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+.food-card {
+  background: var(--card); border-radius: var(--radius-sm);
+  padding: 14px; margin-bottom: 8px; box-shadow: var(--shadow);
+  display: flex; align-items: center; gap: 12px;
+}
+.food-info { flex: 1; min-width: 0; }
+.food-name { font-size: 15px; font-weight: 600; color: var(--text); }
+.food-detail { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.food-alt { font-size: 12px; color: var(--primary); margin-top: 2px; }
+.food-badges { display: flex; gap: 6px; flex-shrink: 0; }
+.badge {
+  font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 4px;
+  white-space: nowrap;
+}
+.badge-safe { background: var(--safe-bg); color: var(--safe); }
+.badge-warn { background: var(--warn-bg); color: var(--warn); }
+.badge-danger { background: var(--danger-bg); color: var(--danger); }
+.badge-gi { background: #F0F0F5; color: var(--text-secondary); }
+
+.food-empty {
+  text-align: center; padding: 40px 20px; color: var(--text-tertiary);
+}
+.food-empty .icon { font-size: 48px; margin-bottom: 12px; }
+.food-empty p { font-size: 14px; }
+.food-empty .btn-ai {
+  display: inline-block; padding: 10px 20px; background: var(--primary); color: #fff;
+  border-radius: 8px; font-size: 14px; font-weight: 500; text-decoration: none;
+  cursor: pointer; border: none; font-family: var(--font); margin-top: 8px;
+}
+.food-empty .btn-ai:active { opacity: 0.8; }
+.food-empty .btn-ai.loading { opacity: 0.6; pointer-events: none; }
+
+/* Settings gear */
+.settings-gear {
+  font-size: 18px; color: var(--text-tertiary); cursor: pointer; padding: 4px 6px;
+  flex-shrink: 0; transition: color 0.15s;
+}
+.settings-gear.has-key { color: var(--primary); }
+
+/* Settings overlay */
+.settings-overlay {
+  display: none; position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,0.4); justify-content: center; align-items: flex-end;
+}
+.settings-overlay.show { display: flex; }
+.settings-sheet {
+  background: var(--card); border-radius: 16px 16px 0 0; width: 100%;
+  max-width: 500px; padding: 24px 20px calc(24px + env(safe-area-inset-bottom));
+  animation: slideUp 0.25s ease;
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.settings-sheet h3 { font-size: 17px; font-weight: 600; margin-bottom: 16px; }
+.settings-sheet .hint { font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.6; }
+.settings-sheet .hint a { color: var(--primary); }
+.settings-sheet input {
+  width: 100%; padding: 10px 12px; border: 1.5px solid var(--separator);
+  border-radius: 8px; font-size: 15px; font-family: var(--font); color: var(--text);
+  background: var(--bg); outline: none; margin-bottom: 12px;
+}
+.settings-sheet input:focus { border-color: var(--primary); }
+.settings-sheet .btn-row { display: flex; gap: 8px; }
+.settings-sheet .btn-row .btn { flex: 1; }
+.btn-secondary { background: var(--bg); color: var(--text); }
+
+/* AI result card */
+.ai-result {
+  background: var(--primary-light); border: 1px solid var(--primary);
+  border-radius: var(--radius-sm); padding: 14px; margin-top: 12px;
+}
+.ai-result .ai-label { font-size: 11px; color: var(--primary); font-weight: 600; margin-bottom: 8px; }
+.ai-result .food-name { font-size: 15px; font-weight: 600; color: var(--text); }
+.ai-result .food-detail { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.ai-result .food-alt { font-size: 12px; color: var(--primary); margin-top: 2px; }
+.ai-loading { text-align: center; padding: 20px; color: var(--text-secondary); font-size: 14px; }
+.ai-loading .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--separator); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; vertical-align: middle; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.ai-error { text-align: center; padding: 16px; color: var(--danger); font-size: 13px; }
+
+/* ===== Exercise ===== */
+.exercise-type-group { margin-bottom: 16px; }
+.exercise-type-label {
+  font-size: 12px; font-weight: 600; color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+.exercise-options {
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+.exercise-opt {
+  padding: 5px 10px; border-radius: 6px; font-size: 13px; cursor: pointer;
+  background: var(--card); border: 1px solid var(--separator);
+  color: var(--text); transition: all 0.15s; font-family: var(--font);
+}
+.exercise-opt.selected { border-color: var(--primary); background: var(--primary-light); color: var(--primary); font-weight: 500; }
+
+/* 常用运动分组 */
+.freq-group { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.freq-label { font-size: 11px; color: var(--text-secondary); flex-shrink: 0; width: 28px; text-align: right; align-self: flex-start; padding-top: 4px; }
+.freq-options { flex: 1; }
+.freq-group:last-child { margin-bottom: 0; }
+.toggle-label {
+  cursor: pointer; user-select: none; -webkit-user-select: none;
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+}
+.toggle-label .toggle-arrow { font-size: 12px; transition: transform 0.2s; }
+.toggle-label.open .toggle-arrow { transform: rotate(180deg); }
+
+.form-row { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; }
+.form-row input {
+  flex: 1; padding: 10px 12px; border: 1.5px solid var(--separator);
+  border-radius: 8px; font-size: 16px; font-family: var(--font);
+  color: var(--text); background: var(--card); outline: none;
+  transition: border-color 0.15s;
+}
+.form-row input:focus { border-color: var(--primary); }
+.form-row .unit { font-size: 14px; color: var(--text-secondary); flex-shrink: 0; }
+
+.btn {
+  padding: 12px 20px; border-radius: 10px; font-size: 15px; font-weight: 600;
+  border: none; cursor: pointer; font-family: var(--font); width: 100%;
+  transition: opacity 0.15s;
+}
+.btn:active { opacity: 0.8; }
+.btn-primary { background: var(--primary); color: #fff; }
+
+.exercise-week { margin-top: 16px; }
+.week-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.week-day {
+  text-align: center; padding: 8px 2px; border-radius: 8px;
+  font-size: 11px; background: var(--card);
+}
+.week-day .day-label { color: var(--text-tertiary); font-size: 10px; margin-bottom: 2px; }
+.week-day .day-content { font-size: 12px; color: var(--text); font-weight: 500; }
+.week-day.has-exercise { background: var(--primary-light); }
+.week-day .day-content .dots { color: var(--primary); font-size: 10px; }
+
+.exercise-summary {
+  display: flex; gap: 12px; margin-top: 12px;
+}
+.summary-item {
+  flex: 1; background: var(--card); border-radius: var(--radius-sm);
+  padding: 12px; text-align: center; box-shadow: var(--shadow);
+}
+.summary-item .num { font-size: 24px; font-weight: 700; color: var(--primary); }
+.summary-item .label { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+/* Exercise recent log */
+.exercise-log { margin-top: 12px; }
+.exercise-log .log-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 0; border-bottom: 0.5px solid var(--separator);
+  font-size: 14px;
+}
+.exercise-log .log-item:last-child { border-bottom: none; }
+.exercise-log .log-type { font-weight: 500; color: var(--text); }
+.exercise-log .log-type .log-cat { font-size: 11px; color: var(--text-tertiary); font-weight: 400; margin-left: 4px; }
+.exercise-log .log-detail { font-size: 13px; color: var(--text-secondary); }
+.exercise-log .log-delete { color: var(--text-tertiary); font-size: 16px; cursor: pointer; padding: 4px; }
+
+/* ===== Body Records ===== */
+.record-form { margin-bottom: 16px; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.form-field { margin-bottom: 10px; }
+.form-field label {
+  display: block; font-size: 13px; font-weight: 500; color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+.form-field input, .form-field select {
+  width: 100%; padding: 10px 12px; border: 1.5px solid var(--separator);
+  border-radius: 8px; font-size: 16px; font-family: var(--font);
+  color: var(--text); background: var(--card); outline: none;
+}
+.form-field input:focus, .form-field select:focus { border-color: var(--primary); }
+
+.toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 0; margin-bottom: 12px;
+}
+.toggle-label { font-size: 14px; color: var(--text); }
+.toggle-switch {
+  width: 50px; height: 30px; border-radius: 15px;
+  background: var(--separator); cursor: pointer; transition: background 0.2s;
+  position: relative;
+}
+.toggle-switch.on { background: var(--danger); }
+.toggle-switch::after {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 26px; height: 26px; border-radius: 13px;
+  background: #fff; transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+.toggle-switch.on::after { transform: translateX(20px); }
+
+.chart-container {
+  background: var(--card); border-radius: var(--radius);
+  padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow);
+}
+.chart-container canvas { width: 100% !important; max-height: 220px; }
+
+.record-list { margin-top: 12px; }
+.record-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px; background: var(--card); border-radius: var(--radius-sm);
+  margin-bottom: 6px; box-shadow: var(--shadow);
+}
+.record-date { font-size: 14px; font-weight: 500; color: var(--text); }
+.record-values { font-size: 13px; color: var(--text-secondary); }
+.record-period { font-size: 11px; color: var(--danger); font-weight: 500; background: var(--danger-bg); padding: 2px 8px; border-radius: 4px; margin-left: 8px; }
+.record-delete { color: var(--text-tertiary); font-size: 16px; cursor: pointer; padding: 4px; margin-left: 8px; }
+
+/* ===== Section Header ===== */
+.section-header {
+  font-size: 13px; font-weight: 600; color: var(--text-secondary);
+  text-transform: uppercase; letter-spacing: 0.05em;
+  margin-bottom: 12px; margin-top: 4px;
+}
+
+.chart-legend {
+  display: flex; gap: 16px; justify-content: center; margin-top: 8px;
+  font-size: 12px; color: var(--text-secondary);
+}
+.chart-legend span { display: flex; align-items: center; gap: 4px; }
+.chart-legend .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+</style>
+</head>
+<body>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Header -->
+<div class="app-header"><h1>🩺 胰岛素抵抗管理</h1></div>
+
+<!-- Tab: 每日要点 -->
+<div class="tab-panel active" id="panel-daily">
+  <div class="card">
+    <div class="card-title"><span class="icon">🥗</span>饮食要点</div>
+    <div class="highlight-item"><span class="highlight-dot green"></span><span class="highlight-text"><b>进食顺序</b>：先喝汤 → 蔬菜 → 蛋白质 → 最后吃主食，能显著降低餐后血糖</span></div>
+    <div class="highlight-item"><span class="highlight-dot green"></span><span class="highlight-text"><b>餐盘比例</b>：1/2蔬菜 + 1/4蛋白 + 1/4低GI主食，主食一拳头大小</span></div>
+    <div class="highlight-item"><span class="highlight-dot red"></span><span class="highlight-text"><b>绝对禁止</b>：含糖饮料、甜点、勾芡浓汤、裹粉油炸食品</span></div>
+    <div class="highlight-item"><span class="highlight-dot orange"></span><span class="highlight-text"><b>水果原则</b>：每天不超过一拳头，两餐之间吃，不喝果汁。优选蓝莓草莓樱桃柚子</span></div>
+    <div class="highlight-item"><span class="highlight-dot green"></span><span class="highlight-text"><b>晚餐19:00前</b>吃完，之后不进食。每天喝水1.5-2升</span></div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="icon">🏃</span>运动要点</div>
+    <div class="highlight-item"><span class="highlight-dot green"></span><span class="highlight-text"><b>先抗阻后有氧</b>：先做深蹲/弹力带等力量训练，再做快走/慢跑等有氧，燃脂效率更高</span></div>
+    <div class="highlight-item"><span class="highlight-dot green"></span><span class="highlight-text"><b>每周至少150分钟</b>中高强度运动，分散到3-5天完成</span></div>
+    <div class="highlight-item"><span class="highlight-dot orange"></span><span class="highlight-text"><b>从低强度起步</b>，每周只增加5-10%，不追求一次到位。运动后30分钟内补充蛋白质</span></div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="icon">😴</span>睡眠要点</div>
+    <div class="highlight-item"><span class="highlight-dot green"></span><span class="highlight-text"><b>23:00前入睡</b>，保证7-8小时。周末不偏差超过1小时</span></div>
+    <div class="highlight-item"><span class="highlight-dot orange"></span><span class="highlight-text"><b>睡前30分钟放下手机</b>，蓝光抑制褪黑素。可用热水泡脚、轻柔拉伸助眠</span></div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="icon">🧘</span>压力管理</div>
+    <div class="highlight-item"><span class="highlight-dot green"></span><span class="highlight-text"><b>腹式深呼吸</b>：吸气4秒 → 憋气4秒 → 呼气6秒，每天2-3次，每次5分钟</span></div>
+    <div class="highlight-item"><span class="highlight-dot orange"></span><span class="highlight-text"><b>降低完美主义</b>：运动「动10分钟也算数」，饮食「这一餐比上一餐好一点就行」</span></div>
+  </div>
+</div>
+
+<!-- Tab: 食物查询 -->
+<div class="tab-panel" id="panel-food">
+  <div class="search-box">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="foodSearch" placeholder="搜索食物名称..." autocomplete="off">
+    <span class="search-clear" id="searchClear">✕</span>
+    <span class="settings-gear" id="settingsGear" title="API 设置">⚙️</span>
+  </div>
+  <div class="category-filters" id="catFilters"></div>
+  <div id="foodResults"></div>
+</div>
+
+<!-- Tab: 运动记录 -->
+<div class="tab-panel" id="panel-exercise">
+  <div class="card">
+    <div class="card-title"><span class="icon">🏋️</span>运动打卡</div>
+    <div class="form-field"><label>日期</label><input type="date" id="exDate"></div>
+
+    <!-- 常用运动（两组各4个） -->
+    <div id="frequentSection" style="display:none;">
+      <div class="exercise-type-label" style="font-size:11px;color:var(--text-tertiary);letter-spacing:0;">常用运动</div>
+      <div class="freq-group" id="freqAerobic">
+        <span class="freq-label">有氧</span>
+        <div class="exercise-options freq-options" id="freqAerobicOpts"></div>
+      </div>
+      <div class="freq-group" id="freqResistance">
+        <span class="freq-label">抗阻</span>
+        <div class="exercise-options freq-options" id="freqResistanceOpts"></div>
+      </div>
+    </div>
+
+    <!-- 全部运动（折叠） -->
+    <div class="exercise-type-label toggle-label" id="allToggle" style="display:none;">全部运动 <span class="toggle-arrow">▾</span></div>
+    <div id="allSection" style="display:none;">
+      <div class="exercise-type-label">有氧运动</div>
+      <div class="exercise-options" id="allAerobicOpts"></div>
+      <div class="exercise-type-label" style="margin-top:12px;">抗阻训练</div>
+      <div class="exercise-options" id="allResistanceOpts"></div>
+      <!-- 新运动 -->
+      <div class="form-row" style="margin-top:14px;">
+        <select id="exNewGroup" style="flex:0 0 auto;width:auto;padding:8px 6px;border:1px solid var(--separator);border-radius:6px;font-size:13px;font-family:var(--font);color:var(--text);background:var(--card);outline:none;-webkit-appearance:none;appearance:none;">
+          <option value="aerobic">有氧</option>
+          <option value="resistance">抗阻</option>
+        </select>
+        <input type="text" id="exNewType" placeholder="新运动，如 🏸 羽毛球" autocomplete="off" style="flex:2;font-size:13px;">
+        <button class="btn" id="btnExAdd" style="flex:0 0 auto;width:auto;padding:8px 12px;background:var(--primary);color:#fff;border-radius:6px;font-size:13px;">添加</button>
+      </div>
+    </div>
+    <div class="form-row">
+      <input type="number" id="exDuration" placeholder="时长（分钟）" min="1" max="180" value="30">
+      <span class="unit">分钟</span>
+    </div>
+    <button class="btn btn-primary" id="btnAddExercise">✅ 打卡记录</button>
+  </div>
+
+  <div class="card" id="weekSummary">
+    <div class="card-title"><span class="icon">📊</span>本周统计</div>
+    <div class="exercise-summary" id="exSummary"></div>
+    <div class="week-days" id="weekDays"></div>
+    <div class="exercise-log" id="exerciseLog"></div>
+  </div>
+</div>
+
+<!-- Tab: 身体记录 -->
+<div class="tab-panel" id="panel-body">
+  <div class="card">
+    <div class="card-title"><span class="icon">📝</span>新增记录</div>
+    <div class="form-grid">
+      <div class="form-field"><label>体重 (kg)</label><input type="number" id="bodyWeight" placeholder="例: 65.0" step="0.1" min="30" max="200"></div>
+      <div class="form-field"><label>腰围 (cm)</label><input type="number" id="bodyWaist" placeholder="例: 85" step="0.5" min="50" max="150"></div>
+    </div>
+    <div class="form-field"><label>日期</label><input type="date" id="bodyDate"></div>
+    <div class="toggle-row"><span class="toggle-label">🩸 标记为经期日</span><div class="toggle-switch" id="periodToggle"></div></div>
+    <button class="btn btn-primary" id="btnAddBody">保存记录</button>
+  </div>
+  <div class="chart-container" id="chartContainer" style="display:none;">
+    <div class="card-title"><span class="icon">📈</span>趋势图</div>
+    <canvas id="bodyChart"></canvas>
+    <div class="chart-legend">
+      <span><span class="dot" style="background:#5B8C85;"></span> 体重</span>
+      <span><span class="dot" style="background:#E8A64C;"></span> 腰围</span>
+      <span><span class="dot" style="background:#D4786E;"></span> 经期</span>
+    </div>
+  </div>
+  <div class="record-list" id="bodyRecordList"><div class="section-header">历史记录</div></div>
+</div>
+
+<!-- Settings Overlay -->
+<div class="settings-overlay" id="settingsOverlay">
+  <div class="settings-sheet" onclick="event.stopPropagation()">
+    <h3>⚙️ API 设置</h3>
+    <div class="hint">
+      使用 DeepSeek AI 联网查询食物。<br>
+      获取 Key：<a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener">platform.deepseek.com/api_keys</a>
+    </div>
+    <input type="password" id="apiKeyInput" placeholder="粘贴你的 DeepSeek API Key">
+    <input type="text" id="apiModelInput" placeholder="模型名称" value="deepseek-chat">
+    <div class="btn-row">
+      <button class="btn btn-secondary" id="btnSettingsCancel">取消</button>
+      <button class="btn btn-primary" id="btnSettingsSave">保存</button>
+    </div>
+    <div id="settingsStatus" style="font-size:12px;margin-top:8px;text-align:center;"></div>
+  </div>
+</div>
+
+<!-- Tab Bar -->
+<div class="tab-bar">
+  <div class="tab-item active" data-tab="daily"><span class="tab-icon">📋</span>每日要点</div>
+  <div class="tab-item" data-tab="food"><span class="tab-icon">🥗</span>食物查询</div>
+  <div class="tab-item" data-tab="exercise"><span class="tab-icon">🏃</span>运动记录</div>
+  <div class="tab-item" data-tab="body"><span class="tab-icon">📊</span>身体记录</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+// ============================
+// Toast
+// ============================
+function showToast(msg, type) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + (type || '') + ' show';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(function() { t.classList.remove('show'); }, 1800);
+}
+
+// ============================
+// 食物数据库 (200+ 种)
+// ============================
+var foodDB = [
+  // ===== 主食（推荐：低GI粗粮）=====
+  { name:'糙米', cat:'主食', gi:'低', status:'推荐', note:'富含膳食纤维，升糖缓慢，替代白米饭首选', alt:'' },
+  { name:'黑米', cat:'主食', gi:'低', status:'推荐', note:'花青素丰富，抗氧化', alt:'' },
+  { name:'燕麦(钢切)', cat:'主食', gi:'低', status:'推荐', note:'β-葡聚糖延缓血糖上升，钢切燕麦GI最低', alt:'' },
+  { name:'荞麦', cat:'主食', gi:'低', status:'推荐', note:'富含芦丁，对血管有益', alt:'' },
+  { name:'藜麦', cat:'主食', gi:'低', status:'推荐', note:'完全蛋白，营养全面，B族维生素丰富', alt:'' },
+  { name:'全麦面包', cat:'主食', gi:'低', status:'推荐', note:'选100%全麦，非"小麦粉+麸皮"那种', alt:'' },
+  { name:'玉米', cat:'主食', gi:'中', status:'推荐', note:'选老玉米而非甜玉米/糯玉米', alt:'' },
+  { name:'红薯', cat:'主食', gi:'中', status:'推荐', note:'放凉后抗性淀粉更多，GI更低', alt:'' },
+  { name:'山药', cat:'主食', gi:'低', status:'推荐', note:'黏液蛋白有益肠胃，蒸煮最佳', alt:'' },
+  { name:'南瓜', cat:'主食', gi:'中', status:'推荐', note:'选老南瓜非贝贝南瓜，后者更甜', alt:'' },
+  { name:'小米', cat:'主食', gi:'中', status:'推荐', note:'富含B族维生素，易消化。煮粥时不过度熬煮', alt:'' },
+  { name:'紫米', cat:'主食', gi:'低', status:'推荐', note:'花青素丰富，搭配糙米煮饭', alt:'' },
+  { name:'薏米', cat:'主食', gi:'低', status:'推荐', note:'利水消肿，健脾祛湿', alt:'' },
+  { name:'鹰嘴豆', cat:'主食', gi:'低', status:'推荐', note:'高蛋白高纤维，GI仅28，可替代部分主食', alt:'' },
+  { name:'绿豆', cat:'主食', gi:'低', status:'推荐', note:'清热解毒，膳食纤维丰富，可煮饭掺入', alt:'' },
+  { name:'红豆', cat:'主食', gi:'低', status:'推荐', note:'富含铁和膳食纤维，煮饭时少量掺入', alt:'' },
+  { name:'高粱米', cat:'主食', gi:'低', status:'推荐', note:'传统粗粮，耐嚼饱腹，消化慢', alt:'' },
+  { name:'青稞', cat:'主食', gi:'低', status:'推荐', note:'高原作物，β-葡聚糖含量高', alt:'' },
+  { name:'全麦意面', cat:'主食', gi:'低', status:'推荐', note:'杜兰小麦制成，GI约50，比白面低得多', alt:'' },
+  { name:'荞麦面', cat:'主食', gi:'低', status:'推荐', note:'GI约59，比白面条好很多', alt:'' },
+  { name:'芋头', cat:'主食', gi:'中', status:'推荐', note:'富含钾，可替代部分主食。蒸煮吃', alt:'' },
+  { name:'土豆(主食)', cat:'主食', gi:'中', status:'推荐', note:'当主食吃而非菜，放凉后抗性淀粉增加。别油炸', alt:'' },
+  { name:'莲藕(主食)', cat:'主食', gi:'中', status:'推荐', note:'含抗性淀粉，适量替代主食。别吃糯米藕', alt:'' },
+
+  // ===== 主食（适量/注意）=====
+  { name:'栗子', cat:'主食', gi:'中', status:'适量', note:'淀粉含量高，一次不超过5颗', alt:'' },
+  { name:'饺子', cat:'主食', gi:'中', status:'适量', note:'选素馅或瘦肉的，不超过8个。蘸醋吃降低GI', alt:'' },
+  { name:'馄饨', cat:'主食', gi:'中', status:'适量', note:'面皮+肉馅，注意汤底不要喝', alt:'' },
+
+  // ===== 主食（避免）=====
+  { name:'白米饭', cat:'主食', gi:'高', status:'避免', note:'升糖极快，尽量用粗粮替代', alt:'糙米、黑米、燕麦' },
+  { name:'白馒头', cat:'主食', gi:'高', status:'避免', note:'精制碳水，升糖指数极高', alt:'全麦馒头、荞麦馒头' },
+  { name:'白面条', cat:'主食', gi:'高', status:'避免', note:'精致面粉制成，升糖快', alt:'荞麦面、全麦意面' },
+  { name:'白面包', cat:'主食', gi:'高', status:'避免', note:'精制碳水+可能含糖', alt:'全麦面包' },
+  { name:'肠粉', cat:'主食', gi:'高', status:'避免', note:'米浆制成，升糖快', alt:'' },
+  { name:'油条', cat:'主食', gi:'高', status:'避免', note:'油炸+精制面粉，双重不健康', alt:'' },
+  { name:'糯米制品', cat:'主食', gi:'高', status:'避免', note:'支链淀粉比例高，升糖极快', alt:'' },
+  { name:'米粉', cat:'主食', gi:'高', status:'避免', note:'大米制成，升糖快', alt:'荞麦面' },
+  { name:'河粉', cat:'主食', gi:'高', status:'避免', note:'大米制品，GI高', alt:'' },
+  { name:'凉皮', cat:'主食', gi:'高', status:'避免', note:'精制碳水，酱料往往含糖', alt:'' },
+  { name:'烧饼', cat:'主食', gi:'高', status:'避免', note:'精面粉+油+可能加糖', alt:'' },
+  { name:'葱油饼', cat:'主食', gi:'高', status:'避免', note:'大量油+精面粉，热量炸弹', alt:'' },
+  { name:'手抓饼', cat:'主食', gi:'高', status:'避免', note:'起酥油+精面粉，反式脂肪风险', alt:'' },
+  { name:'包子(白面)', cat:'主食', gi:'高', status:'避免', note:'白面皮+内馅可能含糖油', alt:'全麦包子/杂粮馒头' },
+  { name:'粽子', cat:'主食', gi:'高', status:'避免', note:'糯米GI极高，蜜枣/豆沙馅更是加糖', alt:'' },
+  { name:'汤圆', cat:'主食', gi:'高', status:'避免', note:'糯米皮+甜馅，升糖双倍', alt:'' },
+  { name:'年糕', cat:'主食', gi:'高', status:'避免', note:'糯米制成，煎炸后更差', alt:'' },
+
+  // ===== 蔬菜（推荐）=====
+  { name:'菠菜', cat:'蔬菜', gi:'低', status:'推荐', note:'富含铁和叶酸，先吃的首选', alt:'' },
+  { name:'生菜', cat:'蔬菜', gi:'低', status:'推荐', note:'热量极低，可大量食用', alt:'' },
+  { name:'西兰花', cat:'蔬菜', gi:'低', status:'推荐', note:'十字花科，抗氧化抗炎', alt:'' },
+  { name:'油菜', cat:'蔬菜', gi:'低', status:'推荐', note:'钙含量高，膳食纤维丰富', alt:'' },
+  { name:'菌菇类', cat:'蔬菜', gi:'低', status:'推荐', note:'香菇/金针菇/杏鲍菇，多糖有益免疫', alt:'' },
+  { name:'黄瓜', cat:'蔬菜', gi:'低', status:'推荐', note:'水分多热量低，加餐首选', alt:'' },
+  { name:'番茄', cat:'蔬菜', gi:'低', status:'推荐', note:'富含番茄红素，熟吃吸收更好', alt:'' },
+  { name:'芹菜', cat:'蔬菜', gi:'低', status:'推荐', note:'膳食纤维高，咀嚼消耗热量', alt:'' },
+  { name:'白菜', cat:'蔬菜', gi:'低', status:'推荐', note:'冬季时令，经济实惠', alt:'' },
+  { name:'苦瓜', cat:'蔬菜', gi:'低', status:'推荐', note:'含苦瓜皂苷，辅助降糖', alt:'' },
+  { name:'空心菜', cat:'蔬菜', gi:'低', status:'推荐', note:'夏季时令，维生素A丰富', alt:'' },
+  { name:'芥蓝', cat:'蔬菜', gi:'低', status:'推荐', note:'钙含量极高，清炒或白灼', alt:'' },
+  { name:'茼蒿', cat:'蔬菜', gi:'低', status:'推荐', note:'富含维生素K和钙', alt:'' },
+  { name:'油麦菜', cat:'蔬菜', gi:'低', status:'推荐', note:'脆嫩爽口，热量极低', alt:'' },
+  { name:'娃娃菜', cat:'蔬菜', gi:'低', status:'推荐', note:'迷你大白菜，口感更嫩', alt:'' },
+  { name:'韭菜', cat:'蔬菜', gi:'低', status:'推荐', note:'富含硫化物，对心血管有益', alt:'' },
+  { name:'花椰菜', cat:'蔬菜', gi:'低', status:'推荐', note:'维C含量高，十字花科抗氧化', alt:'' },
+  { name:'胡萝卜', cat:'蔬菜', gi:'低', status:'推荐', note:'β-胡萝卜素丰富，熟吃吸收更好', alt:'' },
+  { name:'白萝卜', cat:'蔬菜', gi:'低', status:'推荐', note:'助消化，膳食纤维丰富', alt:'' },
+  { name:'莴笋', cat:'蔬菜', gi:'低', status:'推荐', note:'清脆爽口，钾含量高', alt:'' },
+  { name:'竹笋', cat:'蔬菜', gi:'低', status:'推荐', note:'膳食纤维极高，低热量', alt:'' },
+  { name:'芦笋', cat:'蔬菜', gi:'低', status:'推荐', note:'富含叶酸和抗氧化物质', alt:'' },
+  { name:'冬瓜', cat:'蔬菜', gi:'低', status:'推荐', note:'水分多热量极低，利尿消肿', alt:'' },
+  { name:'丝瓜', cat:'蔬菜', gi:'低', status:'推荐', note:'清热解暑，口感柔滑', alt:'' },
+  { name:'西葫芦', cat:'蔬菜', gi:'低', status:'推荐', note:'低碳水，可替代部分面食做"西葫芦面"', alt:'' },
+  { name:'四季豆', cat:'蔬菜', gi:'低', status:'推荐', note:'植物蛋白+纤维。必须彻底煮熟', alt:'' },
+  { name:'豇豆', cat:'蔬菜', gi:'低', status:'推荐', note:'消化慢，饱腹感强', alt:'' },
+  { name:'荷兰豆', cat:'蔬菜', gi:'低', status:'推荐', note:'脆嫩微甜，维C含量高', alt:'' },
+  { name:'豆芽', cat:'蔬菜', gi:'低', status:'推荐', note:'绿豆芽/黄豆芽，高纤维低热量', alt:'' },
+  { name:'青椒', cat:'蔬菜', gi:'低', status:'推荐', note:'维C含量是柠檬的3倍', alt:'' },
+  { name:'彩椒', cat:'蔬菜', gi:'低', status:'推荐', note:'各色都有高抗氧化物质', alt:'' },
+  { name:'秋葵', cat:'蔬菜', gi:'低', status:'推荐', note:'黏液蛋白保护胃黏膜，延缓糖吸收', alt:'' },
+  { name:'茄子', cat:'蔬菜', gi:'低', status:'推荐', note:'花青素丰富。蒸或凉拌，少油不红烧', alt:'' },
+  { name:'洋葱', cat:'蔬菜', gi:'低', status:'推荐', note:'含槲皮素，辅助降血糖', alt:'' },
+  { name:'海带', cat:'蔬菜', gi:'低', status:'推荐', note:'碘和褐藻胶丰富，凉拌最佳', alt:'' },
+  { name:'黑木耳', cat:'蔬菜', gi:'低', status:'推荐', note:'膳食纤维极高，清肠降脂', alt:'' },
+  { name:'魔芋', cat:'蔬菜', gi:'低', status:'推荐', note:'葡甘聚糖几乎零热量，极强饱腹感', alt:'' },
+
+  // ===== 蛋白质（推荐）=====
+  { name:'鸡蛋', cat:'蛋白质', gi:'低', status:'推荐', note:'优质蛋白，每天1-2个。水煮最佳', alt:'' },
+  { name:'鱼虾', cat:'蛋白质', gi:'低', status:'推荐', note:'低脂高蛋白，清蒸白灼最佳', alt:'' },
+  { name:'去皮鸡胸肉', cat:'蛋白质', gi:'低', status:'推荐', note:'脂肪含量最低的肉类，健身首选', alt:'' },
+  { name:'瘦牛肉', cat:'蛋白质', gi:'低', status:'推荐', note:'富含铁和B12，每周2-3次', alt:'' },
+  { name:'豆腐', cat:'蛋白质', gi:'低', status:'推荐', note:'植物蛋白，含大豆异黄酮。选卤水豆腐', alt:'' },
+  { name:'豆浆(无糖)', cat:'蛋白质', gi:'低', status:'推荐', note:'选无糖版本，不要加糖', alt:'' },
+  { name:'毛豆', cat:'蛋白质', gi:'低', status:'推荐', note:'植物蛋白+膳食纤维，加餐佳选', alt:'' },
+  { name:'瘦猪肉', cat:'蛋白质', gi:'低', status:'推荐', note:'选里脊肉，去可见脂肪。每周不超过3次', alt:'' },
+  { name:'羊肉(瘦)', cat:'蛋白质', gi:'低', status:'推荐', note:'选腿肉/里脊，去肥肉。富含L-肉碱', alt:'' },
+  { name:'鸭肉', cat:'蛋白质', gi:'低', status:'推荐', note:'去皮吃，B族维生素丰富', alt:'' },
+  { name:'三文鱼', cat:'蛋白质', gi:'低', status:'推荐', note:'富含Omega-3，抗炎改善胰岛素敏感性', alt:'' },
+  { name:'鳕鱼', cat:'蛋白质', gi:'低', status:'推荐', note:'肉质细嫩，低脂高蛋白', alt:'' },
+  { name:'带鱼', cat:'蛋白质', gi:'低', status:'推荐', note:'经济实惠，清蒸煎烤均可', alt:'' },
+  { name:'鲈鱼', cat:'蛋白质', gi:'低', status:'推荐', note:'淡水鱼中品质优，清蒸最鲜', alt:'' },
+  { name:'牡蛎', cat:'蛋白质', gi:'低', status:'推荐', note:'锌含量极高，对PCOS有益。不过量', alt:'' },
+  { name:'扇贝', cat:'蛋白质', gi:'低', status:'推荐', note:'高蛋白低脂肪，清蒸或煮汤', alt:'' },
+  { name:'纯牛奶', cat:'蛋白质', gi:'低', status:'推荐', note:'优质蛋白+钙。选全脂比脱脂更有饱腹感', alt:'' },
+  { name:'腐竹', cat:'蛋白质', gi:'低', status:'推荐', note:'大豆蛋白浓缩，凉拌或炖煮', alt:'' },
+  { name:'豆皮', cat:'蛋白质', gi:'低', status:'推荐', note:'高蛋白低碳水，火锅好选择', alt:'' },
+  { name:'豆干', cat:'蛋白质', gi:'低', status:'推荐', note:'即食方便，选原味无添加糖的', alt:'' },
+
+  // ===== 蛋白质（适量）=====
+  { name:'奶酪', cat:'蛋白质', gi:'低', status:'适量', note:'钙含量高但脂肪也高。选低脂的，每日不超过20g', alt:'' },
+
+  // ===== 水果（推荐：低GI）=====
+  { name:'蓝莓', cat:'水果', gi:'低', status:'推荐', note:'GI≈53，花青素抗氧化。每天一小把', alt:'' },
+  { name:'草莓', cat:'水果', gi:'低', status:'推荐', note:'GI≈40，维C丰富。适合加餐', alt:'' },
+  { name:'樱桃', cat:'水果', gi:'低', status:'推荐', note:'GI≈22，极低GI，富含褪黑素前体', alt:'' },
+  { name:'柚子', cat:'水果', gi:'低', status:'推荐', note:'GI≈25，极低GI。注意：服药期间需咨询医生', alt:'' },
+  { name:'苹果', cat:'水果', gi:'低', status:'推荐', note:'GI≈36，果胶延缓吸收。带皮吃更好', alt:'' },
+  { name:'梨', cat:'水果', gi:'低', status:'推荐', note:'GI≈36，水分多，秋冬首选', alt:'' },
+  { name:'桃子', cat:'水果', gi:'低', status:'推荐', note:'GI≈42，选脆桃非水蜜桃', alt:'' },
+  { name:'橙子', cat:'水果', gi:'低', status:'推荐', note:'GI≈43，维C丰富。整个吃，不榨汁', alt:'' },
+  { name:'猕猴桃', cat:'水果', gi:'低', status:'推荐', note:'GI≈52，维C之王。选绿果非金果', alt:'' },
+  { name:'火龙果(白)', cat:'水果', gi:'低', status:'推荐', note:'GI≈48，白肉比红肉更低糖。通便', alt:'' },
+  { name:'番石榴', cat:'水果', gi:'低', status:'推荐', note:'GI极低≈33，维C是橙子4倍', alt:'' },
+  { name:'李子', cat:'水果', gi:'低', status:'推荐', note:'GI≈24，极低GI，含抗氧化酚类', alt:'' },
+  { name:'杏', cat:'水果', gi:'低', status:'推荐', note:'GI≈34，β-胡萝卜素丰富', alt:'' },
+  { name:'杨梅', cat:'水果', gi:'低', status:'推荐', note:'GI≈45，花青素丰富。季节性水果', alt:'' },
+  { name:'牛油果', cat:'水果', gi:'低', status:'推荐', note:'GI≈15，优质脂肪延缓糖吸收。每天不超过半个', alt:'' },
+  { name:'柠檬', cat:'水果', gi:'低', status:'推荐', note:'泡水喝，维C高但不要加糖', alt:'' },
+
+  // ===== 水果（适量：中GI）=====
+  { name:'香蕉', cat:'水果', gi:'中', status:'适量', note:'GI≈52，越熟越高。选偏青的，半根即可', alt:'' },
+  { name:'葡萄', cat:'水果', gi:'中', status:'适量', note:'GI≈56，不超过一小串（约15颗）', alt:'' },
+  { name:'芒果', cat:'水果', gi:'中', status:'适量', note:'GI≈51，少量解馋即可', alt:'' },
+  { name:'木瓜', cat:'水果', gi:'中', status:'适量', note:'GI≈59，含木瓜酵素助消化', alt:'' },
+  { name:'菠萝', cat:'水果', gi:'中', status:'适量', note:'GI≈59，含菠萝蛋白酶。少量食用', alt:'' },
+  { name:'哈密瓜', cat:'水果', gi:'中', status:'适量', note:'GI≈60，偏甜。每天不超过一小块', alt:'' },
+  { name:'山竹', cat:'水果', gi:'中', status:'适量', note:'GI≈55，热量不低，一次2-3个', alt:'' },
+  { name:'枇杷', cat:'水果', gi:'中', status:'适量', note:'GI≈50，季节短，少量解馋', alt:'' },
+  { name:'桑葚', cat:'水果', gi:'中', status:'适量', note:'花青素极高，但糖分也不低', alt:'' },
+
+  // ===== 水果（避免：高GI）=====
+  { name:'西瓜', cat:'水果', gi:'高', status:'避免', note:'GI≈72，升糖极快。尽量不碰', alt:'黄瓜、柚子' },
+  { name:'荔枝', cat:'水果', gi:'高', status:'避免', note:'GI≈79，高糖且易上火', alt:'蓝莓、草莓' },
+  { name:'龙眼', cat:'水果', gi:'高', status:'避免', note:'糖分极高，升糖迅速', alt:'樱桃、苹果' },
+  { name:'榴莲', cat:'水果', gi:'高', status:'避免', note:'高糖高热量，脂肪含量也高', alt:'' },
+  { name:'红枣(鲜)', cat:'水果', gi:'高', status:'避免', note:'天然糖分极高，不宜食用', alt:'' },
+  { name:'柿子', cat:'水果', gi:'高', status:'避免', note:'GI≈60+，糖分高，空腹可能形成胃石', alt:'' },
+  { name:'甘蔗', cat:'水果', gi:'高', status:'避免', note:'纯糖水，升糖极快', alt:'' },
+  { name:'菠萝蜜', cat:'水果', gi:'高', status:'避免', note:'GI≈65+，高糖高热量', alt:'' },
+
+  // ===== 干果（避免）=====
+  { name:'葡萄干', cat:'零食甜点', gi:'高', status:'避免', note:'浓缩糖分，升糖炸弹', alt:'新鲜蓝莓草莓' },
+  { name:'红枣干', cat:'零食甜点', gi:'高', status:'避免', note:'浓缩糖分，看似养生实则升糖', alt:'' },
+  { name:'桂圆干', cat:'零食甜点', gi:'高', status:'避免', note:'高糖分，不宜食用', alt:'' },
+  { name:'柿饼', cat:'零食甜点', gi:'高', status:'避免', note:'浓缩果糖+加工糖，升糖极快', alt:'' },
+
+  // ===== 坚果/种子（推荐）=====
+  { name:'核桃', cat:'坚果种子', gi:'低', status:'推荐', note:'Omega-3丰富，每天2-3颗', alt:'' },
+  { name:'杏仁', cat:'坚果种子', gi:'低', status:'推荐', note:'维E丰富，每天约10颗', alt:'' },
+  { name:'腰果', cat:'坚果种子', gi:'低', status:'推荐', note:'含镁和锌，每天约8颗', alt:'' },
+  { name:'开心果', cat:'坚果种子', gi:'低', status:'推荐', note:'蛋白质含量高，每天一小把', alt:'' },
+  { name:'南瓜籽', cat:'坚果种子', gi:'低', status:'推荐', note:'锌含量高，对PCOS有益', alt:'' },
+  { name:'葵花籽', cat:'坚果种子', gi:'低', status:'推荐', note:'维E丰富，选原味不选五香', alt:'' },
+  { name:'奇亚籽', cat:'坚果种子', gi:'低', status:'推荐', note:'Omega-3+纤维，泡水膨胀增加饱腹感', alt:'' },
+  { name:'亚麻籽', cat:'坚果种子', gi:'低', status:'推荐', note:'木酚素和Omega-3，磨碎后吸收更好', alt:'' },
+
+  // ===== 坚果/种子（适量）=====
+  { name:'花生', cat:'坚果种子', gi:'中', status:'适量', note:'实际是豆类，热量高。每天不超过15颗', alt:'' },
+  { name:'松子', cat:'坚果种子', gi:'低', status:'适量', note:'脂肪含量极高，一次一小撮', alt:'' },
+  { name:'榛子', cat:'坚果种子', gi:'低', status:'适量', note:'营养丰富但热量高，每天约8颗', alt:'' },
+
+  // ===== 坚果/种子（避免）=====
+  { name:'琥珀核桃', cat:'坚果种子', gi:'高', status:'避免', note:'裹糖油炸，完全抵消核桃益处', alt:'原味核桃' },
+  { name:'糖炒栗子', cat:'坚果种子', gi:'高', status:'避免', note:'加大量糖炒制，升糖快', alt:'蒸栗子(少量)' },
+
+  // ===== 饮品（推荐）=====
+  { name:'白开水', cat:'饮品', gi:'低', status:'推荐', note:'最好的饮品，每天1.5-2升', alt:'' },
+  { name:'淡绿茶', cat:'饮品', gi:'低', status:'推荐', note:'茶多酚抗氧化，不加糖。不空腹喝', alt:'' },
+  { name:'菊花茶', cat:'饮品', gi:'低', status:'推荐', note:'清热明目，不加冰糖', alt:'' },
+  { name:'柠檬水', cat:'饮品', gi:'低', status:'推荐', note:'维C丰富，不加糖不加蜂蜜', alt:'' },
+  { name:'大麦茶', cat:'饮品', gi:'低', status:'推荐', note:'无咖啡因，助消化', alt:'' },
+  { name:'黑咖啡(无糖)', cat:'饮品', gi:'低', status:'推荐', note:'适量可能改善胰岛素敏感性，每天不超过2杯', alt:'' },
+
+  // ===== 饮品（适量）=====
+  { name:'椰子水(无糖)', cat:'饮品', gi:'中', status:'适量', note:'天然电解质，但含天然糖分。小杯即可', alt:'' },
+
+  // ===== 饮品（避免）=====
+  { name:'含糖饮料', cat:'饮品', gi:'高', status:'避免', note:'可乐冰红茶等，液态糖吸收最快', alt:'白水、淡茶、柠檬水' },
+  { name:'果汁', cat:'饮品', gi:'高', status:'避免', note:'失去纤维只剩果糖，升糖比水果快得多', alt:'直接吃完整水果' },
+  { name:'奶茶', cat:'饮品', gi:'高', status:'避免', note:'高糖+奶精，双重不健康', alt:'无糖纯茶+鲜奶' },
+  { name:'功能饮料', cat:'饮品', gi:'高', status:'避免', note:'大量糖+咖啡因，刺激胰岛素', alt:'' },
+  { name:'乳酸菌饮料', cat:'饮品', gi:'高', status:'避免', note:'看似健康实则含糖量≈可乐', alt:'无糖酸奶' },
+  { name:'椰奶(罐装)', cat:'饮品', gi:'高', status:'避免', note:'加工含糖，非天然椰子水', alt:'' },
+  { name:'炼乳', cat:'饮品', gi:'高', status:'避免', note:'浓缩糖+奶，糖分极高', alt:'' },
+  { name:'酒类', cat:'饮品', gi:'高', status:'避免', note:'干扰肝脏糖代谢，可能引起低血糖反弹。最好不喝', alt:'' },
+
+  // ===== 零食（推荐加餐）=====
+  { name:'无糖酸奶', cat:'加餐', gi:'低', status:'推荐', note:'搭配少量蓝莓或草莓', alt:'' },
+  { name:'黄瓜条', cat:'加餐', gi:'低', status:'推荐', note:'零负担加餐，随时可吃', alt:'' },
+  { name:'小番茄', cat:'加餐', gi:'低', status:'推荐', note:'低GI，富含番茄红素', alt:'' },
+  { name:'水煮毛豆', cat:'加餐', gi:'低', status:'推荐', note:'植物蛋白+纤维，饱腹感强', alt:'' },
+  { name:'水煮蛋', cat:'加餐', gi:'低', status:'推荐', note:'蛋白质饱腹，抑制食欲', alt:'' },
+  { name:'魔芋丝', cat:'加餐', gi:'低', status:'推荐', note:'近乎零热量，麻辣或酸辣调味即可', alt:'' },
+  { name:'海苔(无调味)', cat:'加餐', gi:'低', status:'推荐', note:'低热量，碘丰富。选无调味非油炸的', alt:'' },
+
+  // ===== 零食（避免）=====
+  { name:'蛋糕', cat:'零食甜点', gi:'高', status:'避免', note:'精制碳水+糖+油脂，三高组合', alt:'无糖酸奶+蓝莓' },
+  { name:'饼干', cat:'零食甜点', gi:'高', status:'避免', note:'隐藏大量糖和反式脂肪', alt:'原味坚果' },
+  { name:'巧克力', cat:'零食甜点', gi:'高', status:'避免', note:'含大量糖。黑巧(85%以上)可极少量', alt:'85%以上黑巧(每日≤10g)' },
+  { name:'冰淇淋', cat:'零食甜点', gi:'高', status:'避免', note:'糖+脂肪+低温刺激胰岛素', alt:'' },
+  { name:'薯片', cat:'零食甜点', gi:'高', status:'避免', note:'油炸+高淀粉+高盐，三高组合', alt:'原味坚果、魔芋丝' },
+  { name:'锅巴', cat:'零食甜点', gi:'高', status:'避免', note:'油炸米制品，升糖快', alt:'' },
+  { name:'虾条/薯条', cat:'零食甜点', gi:'高', status:'避免', note:'膨化食品+精制碳水+油', alt:'' },
+  { name:'蛋黄派', cat:'零食甜点', gi:'高', status:'避免', note:'反式脂肪风险+大量糖', alt:'' },
+  { name:'沙琪玛', cat:'零食甜点', gi:'高', status:'避免', note:'油炸面+糖浆，升糖极快', alt:'' },
+  { name:'蛋挞', cat:'零食甜点', gi:'高', status:'避免', note:'酥皮=黄油+面粉+糖。高脂高糖', alt:'' },
+  { name:'月饼', cat:'零食甜点', gi:'高', status:'避免', note:'糖+油+面粉的终极组合。一年一次尝一口即可', alt:'' },
+  { name:'麻薯', cat:'零食甜点', gi:'高', status:'避免', note:'糯米+糖，升糖双倍', alt:'' },
+
+  // ===== 调味品（推荐）=====
+  { name:'醋', cat:'调味品', gi:'低', status:'推荐', note:'醋酸可延缓碳水吸收，凉拌蘸料首选', alt:'' },
+  { name:'酱油(少量)', cat:'调味品', gi:'低', status:'推荐', note:'选减盐酱油，少量提味', alt:'' },
+  { name:'橄榄油', cat:'调味品', gi:'低', status:'推荐', note:'单不饱和脂肪酸为主，凉拌最佳', alt:'' },
+  { name:'亚麻籽油', cat:'调味品', gi:'低', status:'推荐', note:'Omega-3丰富。只能凉拌，不能加热', alt:'' },
+  { name:'柠檬汁(调味)', cat:'调味品', gi:'低', status:'推荐', note:'替代醋，提鲜去腥', alt:'' },
+
+  // ===== 调味品（适量）=====
+  { name:'豆瓣酱', cat:'调味品', gi:'中', status:'适量', note:'含盐量高，少量增味即可', alt:'' },
+  { name:'蚝油', cat:'调味品', gi:'中', status:'适量', note:'含糖含盐，少量提鲜', alt:'' },
+
+  // ===== 调味品（避免）=====
+  { name:'蜂蜜', cat:'调味品', gi:'高', status:'避免', note:'天然糖也是糖，升糖一样快', alt:'代糖（赤藓糖醇/甜菊糖）' },
+  { name:'红糖', cat:'调味品', gi:'高', status:'避免', note:'和白糖一样，升糖快', alt:'' },
+  { name:'冰糖', cat:'调味品', gi:'高', status:'避免', note:'纯蔗糖，升糖极快', alt:'' },
+  { name:'各类糖浆', cat:'调味品', gi:'高', status:'避免', note:'果葡糖浆/麦芽糖浆，直接升糖', alt:'' },
+  { name:'甜面酱', cat:'调味品', gi:'高', status:'避免', note:'面粉+糖发酵制成，升糖快', alt:'' },
+  { name:'沙拉酱', cat:'调味品', gi:'高', status:'避免', note:'油+糖+蛋黄，高热量', alt:'橄榄油+醋' },
+  { name:'千岛酱', cat:'调味品', gi:'高', status:'避免', note:'沙拉酱基础上加糖和番茄酱', alt:'' },
+  { name:'花生酱(含糖)', cat:'调味品', gi:'高', status:'避免', note:'商业花生酱大量加糖和氢化油', alt:'纯花生酱（配料只有花生）少量' },
+  { name:'果酱', cat:'调味品', gi:'高', status:'避免', note:'水果+大量糖熬制，升糖快', alt:'新鲜水果' },
+  { name:'猪油', cat:'调味品', gi:'-', status:'避免', note:'饱和脂肪高，促炎症', alt:'橄榄油、亚麻籽油' },
+
+  // ===== 菜品/烹饪方式（推荐）=====
+  { name:'清蒸鱼', cat:'菜品', gi:'低', status:'推荐', note:'蒸制不加糖油，保持原味。清蒸鲈鱼/鳕鱼', alt:'' },
+  { name:'白灼菜心', cat:'菜品', gi:'低', status:'推荐', note:'沸水焯烫+少许蚝油，保留营养', alt:'' },
+  { name:'凉拌黄瓜', cat:'菜品', gi:'低', status:'推荐', note:'醋+蒜调味，不加糖。开胃控糖', alt:'' },
+  { name:'蒸蛋羹', cat:'菜品', gi:'低', status:'推荐', note:'鸡蛋+水蒸制，不加糖酱油', alt:'' },
+  { name:'水煮鸡胸', cat:'菜品', gi:'低', status:'推荐', note:'低温煮或蒸，嫩而不柴', alt:'' },
+
+  // ===== 菜品（适量）=====
+  { name:'炒青菜(少油)', cat:'菜品', gi:'低', status:'适量', note:'大火快炒保留脆度，油量不超一茶匙', alt:'' },
+  { name:'烤鸡(去皮)', cat:'菜品', gi:'低', status:'适量', note:'去皮后脂肪大减。注意腌料可能含糖', alt:'' },
+  { name:'麻婆豆腐', cat:'菜品', gi:'中', status:'适量', note:'豆腐本身好但酱料可能含糖油。少酱汁', alt:'' },
+
+  // ===== 菜品（避免）=====
+  { name:'勾芡浓汤', cat:'菜品', gi:'高', status:'避免', note:'酸辣汤/玉米羹等，淀粉勾芡升糖快', alt:'清汤、蔬菜汤' },
+  { name:'裹粉油炸', cat:'菜品', gi:'高', status:'避免', note:'炸鸡/天妇罗等，淀粉+油组合', alt:'清蒸、白灼' },
+  { name:'糖醋类', cat:'菜品', gi:'高', status:'避免', note:'大量糖+淀粉勾芡', alt:'清蒸鱼、白灼虾' },
+  { name:'红烧类', cat:'菜品', gi:'高', status:'避免', note:'通常加糖上色，隐藏糖分', alt:'清炖、蒸制' },
+  { name:'照烧类', cat:'菜品', gi:'高', status:'避免', note:'酱汁含大量糖', alt:'' },
+  { name:'蜜汁类', cat:'菜品', gi:'高', status:'避免', note:'蜂蜜/糖浆调味，升糖快', alt:'' },
+  { name:'宫保鸡丁', cat:'菜品', gi:'高', status:'避免', note:'糖+淀粉勾芡+油炸花生', alt:'' },
+  { name:'鱼香肉丝', cat:'菜品', gi:'高', status:'避免', note:'鱼香汁=大量糖+豆瓣酱+淀粉', alt:'' },
+  { name:'回锅肉', cat:'菜品', gi:'高', status:'避免', note:'五花肉高脂+甜面酱含糖', alt:'' },
+  { name:'红烧肉', cat:'菜品', gi:'高', status:'避免', note:'五花肉+大量冰糖上色', alt:'' },
+  { name:'锅包肉', cat:'菜品', gi:'高', status:'避免', note:'油炸+糖醋汁，糖油双高', alt:'' },
+  { name:'干锅类', cat:'菜品', gi:'高', status:'避免', note:'大量油+酱料+可能加糖', alt:'蒸菜、凉拌' },
+  { name:'麻辣火锅', cat:'菜品', gi:'中', status:'避免', note:'锅底油多+蘸料含糖。如果真要吃，清汤锅+醋碟', alt:'' },
+  { name:'烧烤', cat:'菜品', gi:'中', status:'避免', note:'腌制酱料含糖+高温产生AGEs促炎症。偶尔少量', alt:'' }
+];
+
+// ============================
+// 运动类型（预设 + 自定义）
+// ============================
+var CUSTOM_EX_KEY = 'ir_custom_exercises';
+var exerciseTypes = {
+  aerobic: [
+    { name:'快走', icon:'🚶' }, { name:'慢跑', icon:'🏃' }, { name:'游泳', icon:'🏊' },
+    { name:'骑车', icon:'🚴' }, { name:'跳绳', icon:'🪢' }, { name:'椭圆机', icon:'🏋️' }, { name:'跳操/尊巴', icon:'💃' }
+  ],
+  resistance: [
+    { name:'深蹲', icon:'🦵' }, { name:'弓步蹲', icon:'🏃' }, { name:'臀桥', icon:'🍑' },
+    { name:'俯卧撑', icon:'💪' }, { name:'弹力带划船', icon:'🏋️' }, { name:'哑铃推举', icon:'🏋️' },
+    { name:'平板支撑', icon:'🧘' }, { name:'弹力带外展', icon:'🦵' }
+  ]
+};
+
+function getCustomExercises() {
+  try { return JSON.parse(localStorage.getItem(CUSTOM_EX_KEY) || '{"aerobic":[],"resistance":[]}'); }
+  catch(e) { return {aerobic:[], resistance:[]}; }
+}
+function saveCustomExercises(custom) {
+  localStorage.setItem(CUSTOM_EX_KEY, JSON.stringify(custom));
+}
+
+function getMergedExercises(group) {
+  var freq = {};
+  state.exerciseRecords.forEach(function(r) {
+    if (r.category === group) freq[r.type] = (freq[r.type] || 0) + 1;
+  });
+  var custom = getCustomExercises();
+  var all = exerciseTypes[group].concat(custom[group] || []);
+  // 去重（按 name）
+  var seen = {};
+  var unique = [];
+  all.forEach(function(e) {
+    if (!seen[e.name]) { seen[e.name] = true; unique.push(e); }
+  });
+  // 按频次降序，未使用过的放最后
+  unique.sort(function(a, b) {
+    var fa = freq[a.name] || 0, fb = freq[b.name] || 0;
+    if (fa !== fb) return fb - fa;
+    return a.name.localeCompare(b.name);
+  });
+  return unique;
+}
+
+function findIcon(name, group) {
+  var merged = getMergedExercises(group);
+  for (var i = 0; i < merged.length; i++) {
+    if (merged[i].name === name) return merged[i].icon;
+  }
+  return '🏃';
+}
+
+// ============================
+// 应用状态
+// ============================
+var state = {
+  activeTab: 'daily',
+  exerciseRecords: [],
+  bodyRecords: [],
+  selectedExercise: null,
+  bodyChart: null,
+  periodOn: false
+};
+
+function loadData() {
+  try {
+    var ex = localStorage.getItem('ir_exercise');
+    var bd = localStorage.getItem('ir_body');
+    if (ex) state.exerciseRecords = JSON.parse(ex);
+    if (bd) state.bodyRecords = JSON.parse(bd);
+  } catch(e) {}
+}
+function saveExercise() { localStorage.setItem('ir_exercise', JSON.stringify(state.exerciseRecords)); }
+function saveBody() { localStorage.setItem('ir_body', JSON.stringify(state.bodyRecords)); }
+
+// ============================
+// 初始化
+// ============================
+function init() {
+  loadData();
+  initSettings();
+  initTabBar();
+  initFoodSearch();
+  initExerciseTracking();
+  initBodyRecords();
+}
+
+// ============================
+// Tab 切换
+// ============================
+function initTabBar() {
+  document.querySelectorAll('.tab-item').forEach(function(el) {
+    el.addEventListener('click', function() { switchTab(el.dataset.tab); });
+  });
+}
+function switchTab(tab) {
+  state.activeTab = tab;
+  document.querySelectorAll('.tab-item').forEach(function(el) {
+    el.classList.toggle('active', el.dataset.tab === tab);
+  });
+  document.querySelectorAll('.tab-panel').forEach(function(el) {
+    el.classList.toggle('active', el.id === 'panel-' + tab);
+  });
+  if (tab === 'body') renderBodyChart();
+}
+
+// ============================
+// 食物查询
+// ============================
+function initFoodSearch() {
+  var cats = ['全部'].concat(Array.from(new Set(foodDB.map(function(f) { return f.cat; }))));
+  var catCtr = document.getElementById('catFilters');
+  catCtr.innerHTML = cats.map(function(c, i) {
+    return '<span class="cat-chip' + (i === 0 ? ' active' : '') + '" data-cat="' + c + '">' + c + '</span>';
+  }).join('');
+
+  var activeCat = '全部';
+  catCtr.addEventListener('click', function(e) {
+    if (!e.target.classList.contains('cat-chip')) return;
+    catCtr.querySelectorAll('.cat-chip').forEach(function(c) { c.classList.remove('active'); });
+    e.target.classList.add('active');
+    activeCat = e.target.dataset.cat;
+    filterFood();
+  });
+
+  var searchInput = document.getElementById('foodSearch');
+  var searchClear = document.getElementById('searchClear');
+  searchInput.addEventListener('input', filterFood);
+  searchClear.addEventListener('click', function() {
+    searchInput.value = '';
+    searchClear.style.display = 'none';
+    filterFood();
+  });
+
+  function filterFood() {
+    var q = searchInput.value.toLowerCase().trim();
+    searchClear.style.display = q ? 'block' : 'none';
+    var results = foodDB;
+    if (q) results = results.filter(function(f) {
+      return f.name.indexOf(q) >= 0 || f.note.indexOf(q) >= 0 || (f.alt || '').indexOf(q) >= 0;
+    });
+    if (activeCat !== '全部') results = results.filter(function(f) { return f.cat === activeCat; });
+    renderFoodResults(results, q);
+  }
+  renderFoodResults(foodDB, '');
+}
+
+function renderFoodResults(foods, query) {
+  var ctr = document.getElementById('foodResults');
+  if (foods.length === 0) {
+    ctr.innerHTML = '<div class="food-empty"><div class="icon">🔍</div><p>本地数据库未收录「<b>' + query + '</b>」</p><p style="font-size:12px;margin-top:4px;margin-bottom:16px;">试试其他关键词，如"米饭""蓝莓""奶茶"</p><button class="btn-ai" id="btnAiQuery" onclick="queryAI(\'' + query.replace(/'/g, "\\'") + '\')">🤖 AI 联网查询「' + query + '」</button><div id="aiResult"></div></div>';
+    return;
+  }
+  ctr.innerHTML = foods.map(function(f) {
+    var badgeHtml = '';
+    if (f.status === '推荐') badgeHtml = '<span class="badge badge-safe">推荐</span>';
+    else if (f.status === '适量') badgeHtml = '<span class="badge badge-warn">适量</span>';
+    else badgeHtml = '<span class="badge badge-danger">避免</span>';
+    badgeHtml += '<span class="badge badge-gi">' + (f.gi === '低' ? '低GI' : f.gi === '中' ? '中GI' : '高GI') + '</span>';
+    var altHtml = f.alt ? '<div class="food-alt">✅ 替代：' + f.alt + '</div>' : '';
+    return '<div class="food-card"><div class="food-info"><div class="food-name">' + f.name + '</div><div class="food-detail">' + f.note + '</div>' + altHtml + '</div><div class="food-badges">' + badgeHtml + '</div></div>';
+  }).join('');
+}
+
+// ============================
+// 运动记录（新版：常用浮现 + 全部折叠 + 内联添加）
+// ============================
+var ALL_EX_OPEN = false;
+function initExerciseTracking() {
+  var exDate = document.getElementById('exDate');
+  exDate.value = fmtLocalDate(new Date());
+
+  function renderChips() {
+    var freq = {};
+    state.exerciseRecords.forEach(function(r) {
+      if (!freq[r.type]) freq[r.type] = { count: 0, cat: r.category };
+      freq[r.type].count++;
+      freq[r.type].cat = r.category;
+    });
+
+    // 常用：每组 top 4，带图标
+    var freqSection = document.getElementById('frequentSection');
+    var hasAny = false;
+    ['aerobic', 'resistance'].forEach(function(group) {
+      var freqDiv = document.getElementById('freq' + (group === 'aerobic' ? 'Aerobic' : 'Resistance'));
+      var optsDiv = document.getElementById('freq' + (group === 'aerobic' ? 'Aerobic' : 'Resistance') + 'Opts');
+      var groupRecords = Object.keys(freq).filter(function(k) { return freq[k].cat === group; });
+      groupRecords.sort(function(a, b) { return freq[b].count - freq[a].count; });
+      var top4 = groupRecords.slice(0, 4);
+      if (top4.length > 0) {
+        hasAny = true;
+        freqDiv.style.display = 'flex';
+        optsDiv.innerHTML = top4.map(function(name) {
+          var icon = findIcon(name, group);
+          return '<span class="exercise-opt" data-type="' + name + '" data-cat="' + group + '">' + icon + ' ' + name + '</span>';
+        }).join('');
+      } else {
+        freqDiv.style.display = 'none';
+        optsDiv.innerHTML = '';
+      }
+    });
+    freqSection.style.display = hasAny ? 'block' : 'none';
+
+    // 全部运动：两组，带标签，带图标
+    var allToggle = document.getElementById('allToggle');
+    var allSection = document.getElementById('allSection');
+    ['aerobic', 'resistance'].forEach(function(group) {
+      var merged = getMergedExercises(group);
+      var optsDiv = document.getElementById('all' + (group === 'aerobic' ? 'Aerobic' : 'Resistance') + 'Opts');
+      optsDiv.innerHTML = merged.map(function(e) {
+        return '<span class="exercise-opt" data-type="' + e.name + '" data-cat="' + group + '">' + e.icon + ' ' + e.name + '</span>';
+      }).join('');
+    });
+    allToggle.style.display = 'block';
+    if (ALL_EX_OPEN) {
+      allSection.style.display = 'block';
+      allToggle.classList.add('open');
+    } else {
+      allSection.style.display = 'none';
+      allToggle.classList.remove('open');
+    }
+
+    bindChipClicks();
+  }
+  renderChips();
+
+  function bindChipClicks() {
+    document.querySelectorAll('#freqAerobicOpts .exercise-opt, #freqResistanceOpts .exercise-opt, #allAerobicOpts .exercise-opt, #allResistanceOpts .exercise-opt').forEach(function(el) {
+      el.addEventListener('click', function() {
+        // 清除所有选中
+        document.querySelectorAll('.exercise-opt').forEach(function(e) { e.classList.remove('selected'); });
+        el.classList.add('selected');
+        state.selectedExercise = { name: el.dataset.type, category: el.dataset.cat };
+      });
+    });
+  }
+
+  // 全部运动折叠切换
+  document.getElementById('allToggle').addEventListener('click', function() {
+    ALL_EX_OPEN = !ALL_EX_OPEN;
+    var d = document.getElementById('allSection');
+    if (ALL_EX_OPEN) { d.style.display = 'block'; this.classList.add('open'); }
+    else { d.style.display = 'none'; this.classList.remove('open'); }
+  });
+
+  // 内联添加新运动
+  document.getElementById('btnExAdd').addEventListener('click', function() {
+    var input = document.getElementById('exNewType');
+    var raw = input.value.trim();
+    if (!raw) { showToast('请输入运动名称', 'warning'); return; }
+    var emojiMatch = raw.match(/^([\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F900}-\u{1F9FF}])\s*/u);
+    var icon = emojiMatch ? emojiMatch[1] : '🏃';
+    var name = emojiMatch ? raw.slice(emojiMatch[0].length).trim() : raw;
+    if (!name) { showToast('请输入运动名称', 'warning'); return; }
+    // 存入自定义列表
+    var c = getCustomExercises();
+    if (!c.aerobic) c.aerobic = [];
+    if (!c.resistance) c.resistance = [];
+    var targetGroup = document.getElementById('exNewGroup').value;
+    var allCustom = c.aerobic.concat(c.resistance);
+    if (allCustom.some(function(e) { return e.name === name; })) {
+      showToast('已存在「' + name + '」，直接选择即可', 'warning');
+      input.value = '';
+      return;
+    }
+    c[targetGroup].push({ name: name, icon: icon });
+    saveCustomExercises(c);
+    input.value = '';
+    // 刷新 + 自动选中新项
+    renderChips();
+    showToast('✅ 已添加「' + name + '」', 'success');
+  });
+
+  // 打卡按钮
+  document.getElementById('btnAddExercise').addEventListener('click', function() {
+    if (!state.selectedExercise) {
+      showToast('请先选择运动类型', 'warning');
+      return;
+    }
+    var duration = parseInt(document.getElementById('exDuration').value) || 30;
+    duration = Math.max(1, Math.min(duration, 180));
+    var date = exDate.value;
+    if (!date) { showToast('请选择日期', 'warning'); return; }
+    state.exerciseRecords.push({
+      date: date, type: state.selectedExercise.name,
+      category: state.selectedExercise.category, duration: duration
+    });
+    saveExercise();
+    document.getElementById('exDuration').value = 30;
+    exDate.value = fmtLocalDate(new Date());
+    document.querySelectorAll('.exercise-opt').forEach(function(e) { e.classList.remove('selected'); });
+    state.selectedExercise = null;
+    showToast('✅ 打卡成功！' + duration + '分钟', 'success');
+    renderChips();
+    renderWeekSummary();
+  });
+
+  renderWeekSummary();
+}
+
+function fmtLocalDate(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function getWeekRange() {
+  var now = new Date();
+  var day = now.getDay();
+  var monday = new Date(now);
+  monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+  monday.setHours(0,0,0,0);
+  return monday;
+}
+
+function renderWeekSummary() {
+  var monday = getWeekRange();
+  var days = [];
+  for (var i = 0; i < 7; i++) {
+    var d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    days.push(fmtLocalDate(d));
+  }
+  var dayLabels = ['一','二','三','四','五','六','日'];
+
+  var weekRecords = state.exerciseRecords.filter(function(r) { return days.indexOf(r.date) >= 0; });
+  var totalMinutes = weekRecords.reduce(function(s, r) { return s + r.duration; }, 0);
+  var totalSessions = weekRecords.length;
+
+  document.getElementById('exSummary').innerHTML =
+    '<div class="summary-item"><div class="num">' + totalMinutes + '</div><div class="label">本周分钟</div></div>' +
+    '<div class="summary-item"><div class="num">' + totalSessions + '</div><div class="label">打卡次数</div></div>';
+
+  var weekDaysEl = document.getElementById('weekDays');
+  var todayStr = fmtLocalDate(new Date());
+  weekDaysEl.innerHTML = days.map(function(d, i) {
+    var dayRecords = weekRecords.filter(function(r) { return r.date === d; });
+    var hasEx = dayRecords.length > 0;
+    var content = '-';
+    if (hasEx) {
+      var types = dayRecords.map(function(r) { return r.type.slice(0,2); });
+      content = '<span class="dots">●</span> ' + dayRecords.length + '次';
+    }
+    var isToday = d === todayStr;
+    return '<div class="week-day' + (hasEx ? ' has-exercise' : '') + '" style="' + (isToday ? 'border:1.5px solid var(--primary);' : '') + '">' +
+      '<div class="day-label">' + dayLabels[i] + (isToday ? ' 今' : '') + '</div>' +
+      '<div class="day-content">' + content + '</div></div>';
+  }).join('');
+
+  // 最近记录
+  var recentRecords = state.exerciseRecords.slice().reverse().slice(0, 10);
+  var logEl = document.getElementById('exerciseLog');
+  if (recentRecords.length === 0) {
+    logEl.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-tertiary);font-size:13px;">还没有运动记录，开始第一次打卡吧</div>';
+  } else {
+    logEl.innerHTML = '<div class="section-header" style="margin-top:16px;">最近记录</div>' + recentRecords.map(function(r) {
+      return '<div class="log-item">' +
+        '<span class="log-type">' + r.type + '<span class="log-cat">' + (r.category === 'aerobic' ? '有氧' : '抗阻') + '</span></span>' +
+        '<span class="log-detail">' + r.date.slice(5) + ' · ' + r.duration + '分钟</span>' +
+        '<span class="log-delete" data-date="' + r.date + '" data-idx="' + state.exerciseRecords.indexOf(r) + '" title="删除">🗑️</span></div>';
+    }).join('');
+    logEl.querySelectorAll('.log-delete').forEach(function(el) {
+      el.addEventListener('click', function() {
+        var idx = parseInt(el.dataset.idx);
+        if (idx >= 0) {
+          state.exerciseRecords.splice(idx, 1);
+          saveExercise();
+          renderWeekSummary();
+          showToast('已删除', '');
+        }
+      });
+    });
+  }
+}
+
+// ============================
+// 身体记录
+// ============================
+function initBodyRecords() {
+  document.getElementById('bodyDate').value = fmtLocalDate(new Date());
+
+  var toggle = document.getElementById('periodToggle');
+  toggle.addEventListener('click', function() {
+    state.periodOn = !state.periodOn;
+    toggle.classList.toggle('on', state.periodOn);
+  });
+
+  document.getElementById('btnAddBody').addEventListener('click', function() {
+    var weight = parseFloat(document.getElementById('bodyWeight').value);
+    var waist = parseFloat(document.getElementById('bodyWaist').value);
+    var date = document.getElementById('bodyDate').value;
+    if (!weight && !waist) { showToast('请至少填写体重或腰围', 'warning'); return; }
+    if (!date) { showToast('请选择日期', 'warning'); return; }
+
+    var existingIdx = state.bodyRecords.findIndex(function(r) { return r.date === date; });
+    var record = { date: date, weight: weight || 0, waist: waist || 0, isPeriod: state.periodOn };
+    if (existingIdx >= 0) {
+      state.bodyRecords[existingIdx] = record;
+    } else {
+      state.bodyRecords.push(record);
+    }
+    state.bodyRecords.sort(function(a, b) { return a.date.localeCompare(b.date); });
+    saveBody();
+    document.getElementById('bodyWeight').value = '';
+    document.getElementById('bodyWaist').value = '';
+    state.periodOn = false;
+    toggle.classList.remove('on');
+    showToast('✅ 记录已保存', 'success');
+    renderBodyRecords();
+    renderBodyChart();
+  });
+
+  renderBodyRecords();
+}
+
+function renderBodyRecords() {
+  var list = document.getElementById('bodyRecordList');
+  var records = state.bodyRecords.slice().reverse().slice(0, 14);
+  if (records.length === 0) {
+    list.innerHTML = '<div class="section-header">历史记录</div><div style="text-align:center;padding:20px;color:var(--text-tertiary);font-size:14px;">还没有记录，添加第一条吧</div>';
+    return;
+  }
+  list.innerHTML = '<div class="section-header">历史记录</div>' + records.map(function(r) {
+    var parts = [];
+    if (r.weight) parts.push(r.weight + ' kg');
+    if (r.waist) parts.push(r.waist + ' cm');
+    var periodTag = r.isPeriod ? '<span class="record-period">🩸 经期</span>' : '';
+    return '<div class="record-row"><span class="record-date">' + r.date.slice(5) + '</span><span class="record-values">' + parts.join(' / ') + periodTag + '</span><span class="record-delete" data-date="' + r.date + '" title="删除">🗑️</span></div>';
+  }).join('');
+
+  list.querySelectorAll('.record-delete').forEach(function(el) {
+    el.addEventListener('click', function() {
+      var date = el.dataset.date;
+      state.bodyRecords = state.bodyRecords.filter(function(r) { return r.date !== date; });
+      saveBody();
+      renderBodyRecords();
+      renderBodyChart();
+    });
+  });
+}
+
+function renderBodyChart() {
+  var container = document.getElementById('chartContainer');
+  var records = state.bodyRecords.filter(function(r) { return r.weight > 0 || r.waist > 0; });
+  if (records.length < 2) {
+    container.style.display = 'none';
+    return;
+  }
+  container.style.display = 'block';
+
+  var labels = records.map(function(r) { return r.date.slice(5); });
+  var weights = records.map(function(r) { return r.weight || null; });
+  var waists = records.map(function(r) { return r.waist || null; });
+  var periodIdxs = [];
+  records.forEach(function(r, i) { if (r.isPeriod) periodIdxs.push(i); });
+
+  var ctx = document.getElementById('bodyChart').getContext('2d');
+  if (state.bodyChart) state.bodyChart.destroy();
+
+  var periodPlugin = {
+    id: 'periodMarkers',
+    afterDraw: function(chart) {
+      var ctx2 = chart.ctx;
+      var xAxis = chart.scales.x;
+      var yAxis = chart.scales.y;
+      periodIdxs.forEach(function(idx) {
+        var x = xAxis.getPixelForValue(idx);
+        ctx2.save();
+        ctx2.fillStyle = 'rgba(212, 120, 110, 0.12)';
+        var bw = xAxis.width / labels.length;
+        ctx2.fillRect(x - bw/2, yAxis.top, bw, yAxis.bottom - yAxis.top);
+        ctx2.fillStyle = '#D4786E';
+        ctx2.beginPath();
+        ctx2.arc(x, yAxis.bottom + 8, 4, 0, Math.PI * 2);
+        ctx2.fill();
+        ctx2.restore();
+      });
+    }
+  };
+
+  state.bodyChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: '体重 (kg)', data: weights, borderColor: '#5B8C85', backgroundColor: 'rgba(91,140,133,0.08)', borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#5B8C85', tension: 0.3, fill: true },
+        { label: '腰围 (cm)', data: waists, borderColor: '#E8A64C', backgroundColor: 'rgba(232,166,76,0.06)', borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#E8A64C', tension: 0.3, fill: true, yAxisID: 'y1' }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              var idx = ctx.dataIndex;
+              var label = ctx.dataset.label + ': ' + ctx.parsed.y;
+              if (periodIdxs.indexOf(idx) >= 0) label += ' 🩸';
+              return label;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+        y: { type: 'linear', position: 'left', title: { display: true, text: '体重 (kg)', font: { size: 10 }, color: '#5B8C85' }, grid: { color: '#F0F0F5' }, ticks: { font: { size: 10 } } },
+        y1: { type: 'linear', position: 'right', title: { display: true, text: '腰围 (cm)', font: { size: 10 }, color: '#E8A64C' }, grid: { drawOnChartArea: false }, ticks: { font: { size: 10 } } }
+      }
+    },
+    plugins: [periodPlugin]
+  });
+}
+
+// ============================
+// API 设置 & AI 查询
+// ============================
+var apiSettings = { key: '', model: 'deepseek-chat' };
+
+function initSettings() {
+  // 加载已保存的 API Key
+  try {
+    var saved = JSON.parse(localStorage.getItem('ir_api_settings') || '{}');
+    if (saved.key) apiSettings.key = saved.key;
+    if (saved.model) apiSettings.model = saved.model;
+  } catch(e) {}
+
+  var gear = document.getElementById('settingsGear');
+  var overlay = document.getElementById('settingsOverlay');
+  var keyInput = document.getElementById('apiKeyInput');
+  var modelInput = document.getElementById('apiModelInput');
+  var statusEl = document.getElementById('settingsStatus');
+
+  // 更新齿轮状态
+  function updateGear() {
+    gear.classList.toggle('has-key', !!apiSettings.key);
+    gear.title = apiSettings.key ? '已配置 API Key · 点击修改' : '点击设置 API Key';
+  }
+  updateGear();
+
+  // 齿轮点击 → 打开设置面板
+  gear.addEventListener('click', function() {
+    keyInput.value = apiSettings.key || '';
+    modelInput.value = apiSettings.model || 'deepseek-chat';
+    statusEl.textContent = apiSettings.key ? '✅ API Key 已配置' : '';
+    overlay.classList.add('show');
+    setTimeout(function() { keyInput.focus(); }, 300);
+  });
+
+  // 点击遮罩关闭
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) overlay.classList.remove('show');
+  });
+
+  // 取消
+  document.getElementById('btnSettingsCancel').addEventListener('click', function() {
+    overlay.classList.remove('show');
+  });
+
+  // 保存
+  document.getElementById('btnSettingsSave').addEventListener('click', function() {
+    var key = keyInput.value.trim();
+    var model = modelInput.value.trim() || 'deepseek-chat';
+    if (!key) {
+      statusEl.textContent = '⚠️ 请输入 API Key';
+      return;
+    }
+    if (!key.startsWith('sk-')) {
+      statusEl.textContent = '⚠️ Key 格式不对，应以 sk- 开头';
+      return;
+    }
+    apiSettings.key = key;
+    apiSettings.model = model;
+    localStorage.setItem('ir_api_settings', JSON.stringify(apiSettings));
+    updateGear();
+    statusEl.textContent = '✅ 已保存';
+    setTimeout(function() { overlay.classList.remove('show'); }, 600);
+  });
+}
+
+function queryAI(foodName) {
+  if (!apiSettings.key) {
+    document.getElementById('settingsOverlay').classList.add('show');
+    document.getElementById('settingsStatus').textContent = '⚠️ 请先设置 API Key';
+    document.getElementById('apiKeyInput').focus();
+    return;
+  }
+
+  var btn = document.getElementById('btnAiQuery');
+  var resultDiv = document.getElementById('aiResult');
+  if (!btn || !resultDiv) return;
+
+  btn.classList.add('loading');
+  btn.textContent = '⏳ AI 正在查询...';
+  resultDiv.innerHTML = '<div class="ai-loading"><span class="spinner"></span>正在分析「' + foodName + '」对胰岛素抵抗的影响...</div>';
+
+  var prompt = '你是一个专业营养师，专门为胰岛素抵抗+糖耐量异常患者提供饮食建议。请分析以下食物，用严格JSON格式返回（不要markdown代码块，纯JSON）：\n{"name":"食物名","status":"推荐/适量/避免","gi":"低GI/中GI/高GI","giValue":"GI≈数值","reason":"简短说明（50字内）","alternative":"替代品建议（避免的食物才填，推荐和适量的填空字符串）"}\n\n食物：' + foodName;
+
+  fetch('https://api.deepseek.com/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + apiSettings.key
+    },
+    body: JSON.stringify({
+      model: apiSettings.model,
+      messages: [
+        { role: 'system', content: '你是专业营养师。只返回JSON，不要markdown代码块。' },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.3,
+      max_tokens: 300
+    })
+  })
+  .then(function(res) {
+    if (!res.ok) {
+      if (res.status === 401) throw new Error('API Key 无效（401），请检查后重新设置');
+      if (res.status === 402) throw new Error('账户余额不足（402），请充值');
+      throw new Error('API 请求失败（' + res.status + '），请稍后重试');
+    }
+    return res.json();
+  })
+  .then(function(data) {
+    var content = data.choices[0].message.content.trim();
+    // 尝试解析 JSON（可能被 markdown 包裹）
+    var jsonStr = content;
+    var m = content.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+    if (m) jsonStr = m[1];
+    var parsed = JSON.parse(jsonStr);
+
+    var badgeHtml = '';
+    if (parsed.status === '推荐') badgeHtml = '<span class="badge badge-safe">推荐</span>';
+    else if (parsed.status === '适量') badgeHtml = '<span class="badge badge-warn">适量</span>';
+    else badgeHtml = '<span class="badge badge-danger">避免</span>';
+    badgeHtml += '<span class="badge badge-gi">' + (parsed.gi || '') + '</span>';
+
+    var altHtml = parsed.alternative ? '<div class="food-alt">✅ 替代：' + parsed.alternative + '</div>' : '';
+    var giExtra = parsed.giValue ? ' <span style="font-size:11px;color:var(--text-tertiary);">(' + parsed.giValue + ')</span>' : '';
+
+    resultDiv.innerHTML = '<div class="ai-result">' +
+      '<div class="ai-label">🤖 AI 分析结果</div>' +
+      '<div style="display:flex;align-items:center;gap:12px;">' +
+        '<div class="food-info"><div class="food-name">' + parsed.name + giExtra + '</div><div class="food-detail">' + parsed.reason + '</div>' + altHtml + '</div>' +
+        '<div class="food-badges">' + badgeHtml + '</div>' +
+      '</div></div>';
+
+    btn.classList.remove('loading');
+    btn.textContent = '🤖 再次查询「' + foodName + '」';
+  })
+  .catch(function(err) {
+    resultDiv.innerHTML = '<div class="ai-error">❌ ' + err.message + '</div>';
+    btn.classList.remove('loading');
+    btn.textContent = '🤖 重试查询「' + foodName + '」';
+  });
+}
+
+// ============================
+// 启动
+// ============================
+init();
+</script>
+</body>
+</html>
