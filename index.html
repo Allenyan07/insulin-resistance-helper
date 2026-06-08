@@ -71,7 +71,7 @@ body {
 .tab-item.active { color: var(--tab-active); }
 
 /* ===== Tab Panels ===== */
-.tab-panel { display: none; padding: 16px; animation: fadeIn 0.2s ease; }
+.tab-panel { display: none; padding: 16px 16px 40px; animation: fadeIn 0.2s ease; }
 .tab-panel.active { display: block; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -1075,6 +1075,7 @@ function initFoodSearch() {
     e.target.classList.add('active');
     activeFoodCat = e.target.dataset.cat;
     filterFood();
+    searchInput.blur();  // 收起键盘
   });
 
   var searchInput = document.getElementById('foodSearch');
@@ -1096,6 +1097,12 @@ function initFoodSearch() {
     if (activeFoodCat !== '全部') results = results.filter(function(f) { return f.cat === activeFoodCat; });
     renderFoodResults(results, q);
   }
+
+  // 点击食物结果区域收起键盘
+  document.getElementById('foodResults').addEventListener('click', function(e) {
+    searchInput.blur();
+  });
+
   renderFoodResults(foodDB, '');
 }
 
