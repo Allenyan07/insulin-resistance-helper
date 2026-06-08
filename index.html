@@ -342,7 +342,7 @@ body {
 
 /* ===== AI Chat ===== */
 .chat-messages {
-  flex: 1; overflow-y: auto; padding-bottom: 56px;
+  flex: 1; overflow-y: auto; padding-bottom: 8px;
   display: flex; flex-direction: column; gap: 10px;
   min-height: 0;
 }
@@ -377,10 +377,9 @@ body {
 .chat-thinking .dot-pulse span:nth-child(3) { animation-delay: 0.4s; }
 @keyframes dotBounce { 0%,80%,100% { transform: scale(0.6); } 40% { transform: scale(1); } }
 .chat-input-bar {
-  position: fixed; left: 0; right: 0; bottom: 44px; z-index: 99;
-  display: flex; gap: 8px; padding: 10px 16px;
-  border-top: 0.5px solid var(--separator); background: var(--bg);
-  transition: bottom 0.1s;
+  display: flex; gap: 8px; padding: 10px 0 0;
+  border-top: 0.5px solid var(--separator); margin-top: auto;
+  position: sticky; bottom: 0; background: var(--bg);
 }
 .chat-input-bar input {
   flex: 1; padding: 10px 14px; border: 1.5px solid var(--separator);
@@ -1126,6 +1125,9 @@ function switchTab(tab) {
     }
   });
   if (tab === 'body') renderBodyChart();
+  if (tab === 'ai' && window._adjustAIPanelHeight) {
+    setTimeout(window._adjustAIPanelHeight, 50);
+  }
 }
 
 // ============================
@@ -1971,18 +1973,23 @@ function initChat() {
     if (e.key === 'Enter') { e.preventDefault(); send(); }
   });
 
-  // 键盘弹起时，输入框始终固定在可见区域底部
-  var inputBar = document.querySelector('.chat-input-bar');
-  var tabBarEl = document.querySelector('.tab-bar');
-  var baseBottom = tabBarEl ? tabBarEl.offsetHeight : 44;
-  inputBar.style.bottom = baseBottom + 'px';
-
+  // 键盘弹起时缩小面板高度，让输入框自然上移（不用 fixed 定位避免 iOS 滚动漂移）
+  function adjustPanelHeight() {
+    var vv = window.visualViewport;
+    if (!vv) return;
+    var panel = document.getElementById('panel-ai');
+    var headerEl = document.querySelector('.app-header');
+    var tabBarEl = document.querySelector('.tab-bar');
+    if (!panel) return;
+    var headerH = headerEl ? headerEl.offsetHeight : 50;
+    var tabH = tabBarEl ? tabBarEl.offsetHeight : 48;
+    panel.style.height = (vv.height - headerH - tabH) + 'px';
+  }
+  window._adjustAIPanelHeight = adjustPanelHeight;
+  adjustPanelHeight();
   if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', function() {
-      var vv = window.visualViewport;
-      var offset = window.innerHeight - vv.offsetTop - vv.height;
-      inputBar.style.bottom = (baseBottom + offset) + 'px';
-    });
+    window.visualViewport.addEventListener('resize', adjustPanelHeight);
+    window.visualViewport.addEventListener('scroll', adjustPanelHeight);
   }
 }
 
