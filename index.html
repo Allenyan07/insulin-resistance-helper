@@ -47,7 +47,7 @@ body {
 .app-header {
   position: sticky; top: 0; z-index: 100;
   background: var(--card);
-  padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 8px;
   border-bottom: 0.5px solid var(--separator);
   text-align: center;
 }
@@ -71,7 +71,7 @@ body {
 .tab-item.active { color: var(--tab-active); }
 
 /* ===== Tab Panels ===== */
-.tab-panel { display: none; padding: 16px 16px 40px; animation: fadeIn 0.2s ease; }
+.tab-panel { display: none; padding: 12px 16px 40px; animation: fadeIn 0.2s ease; }
 .tab-panel.active { display: block; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
