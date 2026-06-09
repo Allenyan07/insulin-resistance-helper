@@ -377,10 +377,9 @@ body {
 .chat-thinking .dot-pulse span:nth-child(3) { animation-delay: 0.4s; }
 @keyframes dotBounce { 0%,80%,100% { transform: scale(0.6); } 40% { transform: scale(1); } }
 .chat-input-bar {
-  position: fixed; left: 0; right: 0; bottom: 44px; z-index: 99;
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 99;
   display: flex; gap: 8px; padding: 10px 16px;
   border-top: 0.5px solid var(--separator); background: var(--bg);
-  transition: bottom 0.1s;
 }
 .chat-input-bar input {
   flex: 1; padding: 10px 14px; border: 1.5px solid var(--separator);
@@ -443,7 +442,7 @@ body {
   border-radius: 8px; font-size: 16px; font-family: var(--font);
   color: var(--text); background: var(--card); outline: none;
 }
-input[type="date"] { width: 100%; max-width: 100%; }
+input[type="date"] { width: calc(50% - 4px); }
 .form-field input:focus, .form-field select:focus { border-color: var(--primary); }
 
 .toggle-row {
@@ -633,7 +632,7 @@ input[type="date"] { width: 100%; max-width: 100%; }
 </div>
 
 <!-- Tab: AI 助手 -->
-<div class="tab-panel" id="panel-ai" style="display:none;flex-direction:column;height:calc(100vh - 104px - env(safe-area-inset-bottom, 0px));">
+<div class="tab-panel" id="panel-ai" style="display:none;position:fixed;top:52px;left:0;right:0;bottom:0;flex-direction:column;overflow:hidden;">
   <div class="chat-messages" id="chatMessages">
     <div class="chat-welcome">
       <div class="chat-welcome-icon">🤖</div>
@@ -1120,12 +1119,24 @@ function switchTab(tab) {
     el.classList.toggle('active', el.dataset.tab === tab);
   });
   document.querySelectorAll('.tab-panel').forEach(function(el) {
-    el.classList.toggle('active', el.id === 'panel-' + tab);
     if (el.id === 'panel-ai') {
       el.style.display = (el.id === 'panel-' + tab) ? 'flex' : 'none';
+    } else {
+      el.classList.toggle('active', el.id === 'panel-' + tab);
     }
   });
   if (tab === 'body') renderBodyChart();
+  // AI面板键盘自适应：切到AI时立即校准位置
+  if (tab === 'ai' && window.visualViewport) {
+    setTimeout(function() {
+      var vv = window.visualViewport;
+      var panel = document.getElementById('panel-ai');
+      var headerH = document.querySelector('.app-header') ? document.querySelector('.app-header').offsetHeight : 52;
+      var tabH = document.querySelector('.tab-bar') ? document.querySelector('.tab-bar').offsetHeight : 44;
+      panel.style.top = (vv.offsetTop + headerH) + 'px';
+      panel.style.bottom = (window.innerHeight - vv.offsetTop - vv.height + tabH) + 'px';
+    }, 50);
+  }
 }
 
 // ============================
@@ -1981,22 +1992,19 @@ function initChat() {
     if (e.key === 'Enter') { e.preventDefault(); send(); }
   });
 
-  // 键盘弹起时，输入框始终固定在可见区域底部
-  var inputBar = document.querySelector('.chat-input-bar');
+  // 键盘弹起时，AI面板跟随可视区域收缩，输入框始终贴键盘上方
+  var panel = document.getElementById('panel-ai');
   var tabBarEl = document.querySelector('.tab-bar');
-  var baseBottom = tabBarEl ? tabBarEl.offsetHeight : 44;
-  inputBar.style.bottom = baseBottom + 'px';
+  var headerEl = document.querySelector('.app-header');
 
   function adjustForKeyboard() {
-    if (!window.visualViewport) return;
+    if (!window.visualViewport || state.activeTab !== 'ai') return;
     var vv = window.visualViewport;
-    var offset = window.innerHeight - vv.offsetTop - vv.height;
-    inputBar.style.bottom = (baseBottom + offset) + 'px';
-    // 同步调整 AI 面板高度，防止内容被键盘遮挡
-    var panel = document.getElementById('panel-ai');
-    if (panel && state.activeTab === 'ai') {
-      panel.style.height = vv.height - 52 + 'px'; // 52px = header高度
-    }
+    var headerH = headerEl ? headerEl.offsetHeight : 52;
+    var tabH = tabBarEl ? tabBarEl.offsetHeight : 44;
+    // 面板从 header 底部到可视区域底部
+    panel.style.top = (vv.offsetTop + headerH) + 'px';
+    panel.style.bottom = (window.innerHeight - vv.offsetTop - vv.height + tabH) + 'px';
   }
 
   if (window.visualViewport) {
