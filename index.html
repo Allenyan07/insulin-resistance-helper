@@ -442,7 +442,6 @@ body {
   border-radius: 8px; font-size: 16px; font-family: var(--font);
   color: var(--text); background: var(--card); outline: none;
 }
-input[type="date"] { width: calc(50% - 4px); }
 .form-field input:focus, .form-field select:focus { border-color: var(--primary); }
 
 .toggle-row {
@@ -494,6 +493,84 @@ input[type="date"] { width: calc(50% - 4px); }
 }
 .chart-legend span { display: flex; align-items: center; gap: 4px; }
 .chart-legend .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+/* ===== Bowel Field ===== */
+.bowel-stepper { display: flex; align-items: center; gap: 6px; }
+.bowel-stepper .stepper-btn {
+  width: 36px; height: 36px; border-radius: 8px; border: 1.5px solid var(--separator);
+  background: var(--card); font-size: 20px; cursor: pointer; display: flex;
+  align-items: center; justify-content: center; color: var(--text);
+  font-family: var(--font); line-height: 1; padding: 0;
+}
+.bowel-stepper .stepper-btn:active { background: var(--bg); }
+.bowel-stepper .stepper-val {
+  width: 40px; text-align: center; font-size: 18px; font-weight: 600; color: var(--text);
+}
+.bowel-badge {
+  font-size: 11px; color: #8B6914; font-weight: 500;
+  background: #FDF6EC; padding: 2px 8px; border-radius: 4px; margin-left: 4px;
+}
+
+/* ===== Body Calendar (embedded) ===== */
+.body-calendar { margin-top: 12px; }
+.body-calendar .cal-nav-row {
+  display: flex; align-items: center; justify-content: center; gap: 16px;
+  margin-bottom: 10px;
+}
+.body-calendar .cal-nav-row .cal-month-label { font-size: 14px; font-weight: 600; color: var(--text); }
+.body-calendar .cal-nav-row .cal-nav-btn {
+  width: 28px; height: 28px; border: none; border-radius: 6px;
+  background: var(--bg); color: var(--text); font-size: 12px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.body-calendar .cal-nav-btn:active { background: var(--separator); }
+.body-calendar .cal-weekdays {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  text-align: center; font-size: 10px; color: var(--text-tertiary);
+  font-weight: 500; margin-bottom: 4px;
+}
+.body-calendar .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.body-calendar .cal-cell {
+  text-align: center; padding: 6px 2px; border-radius: 6px;
+  font-size: 13px; color: var(--text); cursor: default; position: relative;
+  min-height: 36px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 1px;
+}
+.body-calendar .cal-cell.empty { cursor: default; }
+.body-calendar .cal-cell.today { font-weight: 700; color: var(--primary); }
+.body-calendar .cal-cell.is-period { background: #FDF0EF; }
+.body-calendar .cal-cell .cell-marks { display: flex; gap: 2px; align-items: center; margin-top: 1px; }
+.body-calendar .cal-cell .mark-period { font-size: 9px; }
+.body-calendar .cal-cell .mark-bowel {
+  font-size: 10px; font-weight: 600; color: #8B6914;
+}
+.body-calendar .cal-legend {
+  display: flex; gap: 14px; justify-content: center; margin-top: 8px;
+  font-size: 11px; color: var(--text-secondary);
+}
+.body-calendar .cal-legend span { display: flex; align-items: center; gap: 4px; }
+
+/* ===== Edit Record Modal ===== */
+.edit-modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 350;
+  background: rgba(0,0,0,0.4); justify-content: center; align-items: center;
+}
+.edit-modal-overlay.show { display: flex; }
+.edit-modal-sheet {
+  background: var(--card); border-radius: 16px; width: 90%; max-width: 380px;
+  padding: 24px 20px 20px; animation: fadeIn 0.2s ease;
+}
+.edit-modal-sheet h3 { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+.edit-modal-sheet .edit-date-label { font-size: 13px; color: var(--text-secondary); margin-bottom: 16px; }
+.edit-modal-sheet .form-grid { margin-bottom: 8px; }
+.edit-modal-sheet .btn-row { display: flex; gap: 8px; margin-top: 16px; }
+.edit-modal-sheet .btn-row .btn { flex: 1; padding: 10px; font-size: 14px; }
+.btn-danger-outline {
+  background: var(--card); color: var(--danger); border: 1.5px solid var(--danger);
+  padding: 12px 20px; border-radius: 10px; font-size: 15px; font-weight: 600;
+  cursor: pointer; font-family: var(--font); width: 100%; transition: opacity 0.15s;
+}
+.btn-danger-outline:active { opacity: 0.8; }
 </style>
 </head>
 <body>
@@ -612,10 +689,20 @@ input[type="date"] { width: calc(50% - 4px); }
   <div class="card">
     <div class="card-title"><span class="icon">📝</span>新增记录</div>
     <div class="form-grid">
+      <div class="form-field"><label>日期</label><input type="date" id="bodyDate"></div>
+      <div class="form-field">
+        <label>💩 排便次数 <span style="font-weight:400;font-size:12px;color:var(--text-tertiary);">（非必填）</span></label>
+        <div class="bowel-stepper" id="bowelStepper">
+          <button class="stepper-btn" type="button" data-dir="-1">−</button>
+          <span class="stepper-val" id="bowelVal">0</span>
+          <button class="stepper-btn" type="button" data-dir="1">+</button>
+        </div>
+      </div>
+    </div>
+    <div class="form-grid">
       <div class="form-field"><label>体重 (kg)</label><input type="number" id="bodyWeight" placeholder="例: 65.0" step="0.1" min="30" max="200"></div>
       <div class="form-field"><label>腰围 (cm)</label><input type="number" id="bodyWaist" placeholder="例: 85" step="0.5" min="50" max="150"></div>
     </div>
-    <div class="form-field"><label>日期</label><input type="date" id="bodyDate"></div>
     <div class="toggle-row"><span class="toggle-label">🩸 标记为经期日</span><div class="toggle-switch" id="periodToggle"></div></div>
     <button class="btn btn-primary" id="btnAddBody">保存记录</button>
   </div>
@@ -628,7 +715,48 @@ input[type="date"] { width: calc(50% - 4px); }
       <span><span class="dot" style="background:#D4786E;"></span> 经期</span>
     </div>
   </div>
+  <!-- 经期 & 排便日历 -->
+  <div class="card body-calendar" id="bodyCalendarCard" style="display:none;">
+    <div class="card-title"><span class="icon">📅</span>经期 &amp; 排便日历</div>
+    <div class="cal-nav-row">
+      <button class="cal-nav-btn" id="bcPrev">◀</button>
+      <span class="cal-month-label" id="bcMonth"></span>
+      <button class="cal-nav-btn" id="bcNext">▶</button>
+    </div>
+    <div class="cal-weekdays"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
+    <div class="cal-grid" id="bcGrid"></div>
+    <div class="cal-legend">
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#FDF0EF;border:1px solid #F0D0CC;"></span> 经期</span>
+      <span style="color:#8B6914;">💩N 排便次数</span>
+    </div>
+  </div>
   <div class="record-list" id="bodyRecordList"><div class="section-header">历史记录</div></div>
+</div>
+
+<!-- Edit Record Modal -->
+<div class="edit-modal-overlay" id="editModal">
+  <div class="edit-modal-sheet" onclick="event.stopPropagation()">
+    <h3>✏️ 修改记录</h3>
+    <div class="edit-date-label" id="editDateLabel"></div>
+    <div class="form-grid">
+      <div class="form-field"><label>体重 (kg)</label><input type="number" id="editWeight" step="0.1" min="30" max="200"></div>
+      <div class="form-field"><label>腰围 (cm)</label><input type="number" id="editWaist" step="0.5" min="50" max="150"></div>
+    </div>
+    <div class="form-field">
+      <label>💩 排便次数</label>
+      <div class="bowel-stepper" id="editBowelStepper">
+        <button class="stepper-btn" type="button" data-dir="-1">−</button>
+        <span class="stepper-val" id="editBowelVal">0</span>
+        <button class="stepper-btn" type="button" data-dir="1">+</button>
+      </div>
+    </div>
+    <div class="toggle-row"><span class="toggle-label">🩸 标记为经期日</span><div class="toggle-switch" id="editPeriodToggle"></div></div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" id="btnEditCancel">取消</button>
+      <button class="btn btn-primary" id="btnEditSave">保存修改</button>
+    </div>
+    <button class="btn-danger-outline" id="btnEditDelete" style="margin-top:8px;">🗑️ 删除此记录</button>
+  </div>
 </div>
 
 <!-- Tab: AI 助手 -->
@@ -1103,6 +1231,7 @@ function init() {
   initFoodSearch();
   initExerciseTracking();
   initBodyRecords();
+  initEditModal();
 }
 
 // ============================
@@ -1125,7 +1254,7 @@ function switchTab(tab) {
       el.classList.toggle('active', el.id === 'panel-' + tab);
     }
   });
-  if (tab === 'body') renderBodyChart();
+  if (tab === 'body') { renderBodyChart(); renderBodyCalendar(); }
   // AI面板键盘自适应：切到AI时立即校准位置
   if (tab === 'ai' && window.visualViewport) {
     setTimeout(function() {
@@ -1440,6 +1569,17 @@ function renderWeekSummary() {
 // ============================
 function initBodyRecords() {
   document.getElementById('bodyDate').value = fmtLocalDate(new Date());
+  var bowelVal = 0;
+
+  // Bowel stepper
+  var stepperBtns = document.querySelectorAll('#bowelStepper .stepper-btn');
+  stepperBtns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var dir = parseInt(btn.dataset.dir);
+      bowelVal = Math.max(0, Math.min(10, bowelVal + dir));
+      document.getElementById('bowelVal').textContent = bowelVal;
+    });
+  });
 
   var toggle = document.getElementById('periodToggle');
   toggle.addEventListener('click', function() {
@@ -1447,15 +1587,37 @@ function initBodyRecords() {
     toggle.classList.toggle('on', state.periodOn);
   });
 
+  // Date change → pre-fill existing record
+  document.getElementById('bodyDate').addEventListener('change', function() {
+    var date = this.value;
+    var existing = state.bodyRecords.find(function(r) { return r.date === date; });
+    if (existing) {
+      document.getElementById('bodyWeight').value = existing.weight || '';
+      document.getElementById('bodyWaist').value = existing.waist || '';
+      bowelVal = existing.bowel || 0;
+      document.getElementById('bowelVal').textContent = bowelVal;
+      state.periodOn = !!existing.isPeriod;
+      toggle.classList.toggle('on', state.periodOn);
+    } else {
+      // Clear form for new date
+      document.getElementById('bodyWeight').value = '';
+      document.getElementById('bodyWaist').value = '';
+      bowelVal = 0;
+      document.getElementById('bowelVal').textContent = '0';
+      state.periodOn = false;
+      toggle.classList.remove('on');
+    }
+  });
+
   document.getElementById('btnAddBody').addEventListener('click', function() {
     var weight = parseFloat(document.getElementById('bodyWeight').value);
     var waist = parseFloat(document.getElementById('bodyWaist').value);
     var date = document.getElementById('bodyDate').value;
-    if (!weight && !waist) { showToast('请至少填写体重或腰围', 'warning'); return; }
+    if (!weight && !waist && !bowelVal && !state.periodOn) { showToast('请至少填写一项数据', 'warning'); return; }
     if (!date) { showToast('请选择日期', 'warning'); return; }
 
     var existingIdx = state.bodyRecords.findIndex(function(r) { return r.date === date; });
-    var record = { date: date, weight: weight || 0, waist: waist || 0, isPeriod: state.periodOn };
+    var record = { date: date, weight: weight || 0, waist: waist || 0, bowel: bowelVal, isPeriod: state.periodOn };
     if (existingIdx >= 0) {
       state.bodyRecords[existingIdx] = record;
     } else {
@@ -1465,14 +1627,18 @@ function initBodyRecords() {
     saveBody();
     document.getElementById('bodyWeight').value = '';
     document.getElementById('bodyWaist').value = '';
+    bowelVal = 0;
+    document.getElementById('bowelVal').textContent = '0';
     state.periodOn = false;
     toggle.classList.remove('on');
     showToast('✅ 记录已保存', 'success');
     renderBodyRecords();
     renderBodyChart();
+    renderBodyCalendar();
   });
 
   renderBodyRecords();
+  initBodyCalendar();
 }
 
 function renderBodyRecords() {
@@ -1484,27 +1650,18 @@ function renderBodyRecords() {
     list.innerHTML = '<div class="section-header">历史记录</div><div style="text-align:center;padding:20px;color:var(--text-tertiary);font-size:14px;">还没有记录，添加第一条吧</div>';
     return;
   }
-  var html = '<div class="section-header">历史记录</div>' + records.map(function(r) {
+  var html = '<div class="section-header">历史记录 <span style="font-weight:400;font-size:11px;color:var(--text-tertiary);">点击可修改</span></div>' + records.map(function(r) {
     var parts = [];
     if (r.weight) parts.push(r.weight + ' kg');
     if (r.waist) parts.push(r.waist + ' cm');
     var periodTag = r.isPeriod ? '<span class="record-period">🩸 经期</span>' : '';
-    return '<div class="record-row"><span class="record-date">' + r.date.slice(5) + '</span><span class="record-values">' + parts.join(' / ') + periodTag + '</span><span class="record-delete" data-date="' + r.date + '" title="删除">🗑️</span></div>';
+    var bowelTag = (r.bowel > 0) ? '<span class="bowel-badge">💩×' + r.bowel + '</span>' : '';
+    return '<div class="record-row" style="cursor:pointer;" onclick="openEditRecord(\'' + r.date + '\')"><span class="record-date">' + r.date.slice(5) + '</span><span class="record-values">' + parts.join(' / ') + periodTag + bowelTag + '</span></div>';
   }).join('');
   if (total > 7) {
     html += '<button class="btn-more" onclick="openCalendar(\'body\')">查看全部 ' + total + ' 条 ›</button>';
   }
   list.innerHTML = html;
-
-  list.querySelectorAll('.record-delete').forEach(function(el) {
-    el.addEventListener('click', function() {
-      var date = el.dataset.date;
-      state.bodyRecords = state.bodyRecords.filter(function(r) { return r.date !== date; });
-      saveBody();
-      renderBodyRecords();
-      renderBodyChart();
-    });
-  });
 }
 
 function renderBodyChart() {
@@ -1582,6 +1739,154 @@ function renderBodyChart() {
 }
 
 // ============================
+// 经期 & 排便日历（嵌入身体记录页）
+// ============================
+var bcYear, bcMonth;
+
+function initBodyCalendar() {
+  var now = new Date();
+  bcYear = now.getFullYear();
+  bcMonth = now.getMonth() + 1;
+  document.getElementById('bcPrev').addEventListener('click', function() {
+    bcMonth--; if (bcMonth < 1) { bcMonth = 12; bcYear--; }
+    renderBodyCalendar();
+  });
+  document.getElementById('bcNext').addEventListener('click', function() {
+    bcMonth++; if (bcMonth > 12) { bcMonth = 1; bcYear++; }
+    renderBodyCalendar();
+  });
+  renderBodyCalendar();
+}
+
+function renderBodyCalendar() {
+  var card = document.getElementById('bodyCalendarCard');
+  // Show calendar only if there are any records with period or bowel
+  var hasData = state.bodyRecords.some(function(r) { return r.isPeriod || (r.bowel > 0); });
+  if (!hasData) {
+    card.style.display = 'none';
+    return;
+  }
+  card.style.display = 'block';
+
+  document.getElementById('bcMonth').textContent = bcYear + '年' + bcMonth + '月';
+
+  // Build lookup maps
+  var periodDates = {};
+  var bowelDates = {};
+  state.bodyRecords.forEach(function(r) {
+    if (r.isPeriod) periodDates[r.date] = true;
+    if (r.bowel > 0) bowelDates[r.date] = r.bowel;
+  });
+
+  var todayStr = fmtLocalDate(new Date());
+  var firstDay = new Date(bcYear, bcMonth - 1, 1);
+  var lastDay = new Date(bcYear, bcMonth, 0);
+  var startDow = firstDay.getDay();
+  var totalDays = lastDay.getDate();
+
+  var grid = document.getElementById('bcGrid');
+  var html = '';
+  for (var i = 0; i < startDow; i++) {
+    html += '<div class="cal-cell empty"></div>';
+  }
+  for (var d = 1; d <= totalDays; d++) {
+    var dateStr = bcYear + '-' + String(bcMonth).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+    var cls = 'cal-cell';
+    if (dateStr === todayStr) cls += ' today';
+    if (periodDates[dateStr]) cls += ' is-period';
+    var marks = '';
+    if (periodDates[dateStr]) marks += '<span class="mark-period">🩸</span>';
+    if (bowelDates[dateStr]) marks += '<span class="mark-bowel">💩×' + bowelDates[dateStr] + '</span>';
+    html += '<div class="' + cls + '">' + d + (marks ? '<div class="cell-marks">' + marks + '</div>' : '') + '</div>';
+  }
+  grid.innerHTML = html;
+}
+
+// ============================
+// 编辑记录弹窗
+// ============================
+var editDate = null;
+var editBowelVal = 0;
+
+function openEditRecord(date) {
+  var r = state.bodyRecords.find(function(rr) { return rr.date === date; });
+  if (!r) return;
+  editDate = date;
+  document.getElementById('editDateLabel').textContent = '📅 ' + date;
+  document.getElementById('editWeight').value = r.weight || '';
+  document.getElementById('editWaist').value = r.waist || '';
+  editBowelVal = r.bowel || 0;
+  document.getElementById('editBowelVal').textContent = editBowelVal;
+  var editToggle = document.getElementById('editPeriodToggle');
+  if (r.isPeriod) { editToggle.classList.add('on'); } else { editToggle.classList.remove('on'); }
+  document.getElementById('editModal').classList.add('show');
+}
+
+function closeEditModal() {
+  document.getElementById('editModal').classList.remove('show');
+  editDate = null;
+}
+
+function saveEditRecord() {
+  if (!editDate) return;
+  var weight = parseFloat(document.getElementById('editWeight').value);
+  var waist = parseFloat(document.getElementById('editWaist').value);
+  var isPeriod = document.getElementById('editPeriodToggle').classList.contains('on');
+  var idx = state.bodyRecords.findIndex(function(r) { return r.date === editDate; });
+  if (idx >= 0) {
+    state.bodyRecords[idx] = {
+      date: editDate,
+      weight: weight || 0,
+      waist: waist || 0,
+      bowel: editBowelVal,
+      isPeriod: isPeriod
+    };
+    saveBody();
+    showToast('✅ 记录已更新', 'success');
+    closeEditModal();
+    renderBodyRecords();
+    renderBodyChart();
+    renderBodyCalendar();
+  }
+}
+
+function deleteEditRecord() {
+  if (!editDate) return;
+  if (!window.confirm('确定要删除 ' + editDate + ' 的记录吗？')) return;
+  state.bodyRecords = state.bodyRecords.filter(function(r) { return r.date !== editDate; });
+  saveBody();
+  closeEditModal();
+  renderBodyRecords();
+  renderBodyChart();
+  renderBodyCalendar();
+  showToast('已删除', '');
+}
+
+function initEditModal() {
+  // Bowel stepper in edit modal
+  var editBtns = document.querySelectorAll('#editBowelStepper .stepper-btn');
+  editBtns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var dir = parseInt(btn.dataset.dir);
+      editBowelVal = Math.max(0, Math.min(10, editBowelVal + dir));
+      document.getElementById('editBowelVal').textContent = editBowelVal;
+    });
+  });
+  // Period toggle
+  document.getElementById('editPeriodToggle').addEventListener('click', function() {
+    this.classList.toggle('on');
+  });
+  // Save / Cancel / Delete
+  document.getElementById('btnEditSave').addEventListener('click', saveEditRecord);
+  document.getElementById('btnEditCancel').addEventListener('click', closeEditModal);
+  document.getElementById('btnEditDelete').addEventListener('click', deleteEditRecord);
+  // Close on overlay click
+  document.getElementById('editModal').addEventListener('click', function(e) {
+    if (e.target === this) closeEditModal();
+  });
+}
+
+// ============================
 // API 设置 & AI 查询
 // ============================
 var apiSettings = { key: '', model: 'deepseek-chat' };
@@ -1637,6 +1942,7 @@ function initBackup() {
         renderWeekSummary();
         renderBodyRecords();
         renderBodyChart();
+        renderBodyCalendar();
         initExerciseTracking();
         showToast('✅ 已恢复', 'success');
       } catch(err) { showToast('⚠️ 无法解析备份文件', 'error'); }
@@ -1877,6 +2183,16 @@ function renderCalendar() {
   var dateMap = {};
   records.forEach(function(r) { dateMap[r.date] = true; });
 
+  // Body mode: period & bowel markers
+  var periodDates = {};
+  var bowelDates = {};
+  if (calMode === 'body') {
+    records.forEach(function(r) {
+      if (r.isPeriod) periodDates[r.date] = true;
+      if (r.bowel > 0) bowelDates[r.date] = r.bowel;
+    });
+  }
+
   var todayStr = fmtLocalDate(new Date());
 
   // 当月第一天和最后一天
@@ -1900,7 +2216,16 @@ function renderCalendar() {
     if (dateStr === todayStr) cls += ' today';
     if (dateMap[dateStr]) cls += ' has-record';
     if (dateStr === calSelectedDate) cls += ' selected';
-    html += '<div class="' + cls + '" data-date="' + dateStr + '" onclick="selectCalDate(\'' + dateStr + '\')">' + d + '</div>';
+
+    var content = '' + d;
+    if (calMode === 'body') {
+      var marks = '';
+      if (periodDates[dateStr]) marks += ' 🩸';
+      if (bowelDates[dateStr]) marks += ' 💩' + bowelDates[dateStr];
+      if (marks) content += '<span style="font-size:9px;display:block;line-height:1;">' + marks + '</span>';
+    }
+
+    html += '<div class="' + cls + '" data-date="' + dateStr + '" onclick="selectCalDate(\'' + dateStr + '\')">' + content + '</div>';
   }
 
   grid.innerHTML = html;
@@ -1935,7 +2260,8 @@ function renderCalDayRecords() {
       if (r.weight) parts.push(r.weight + ' kg');
       if (r.waist) parts.push(r.waist + ' cm');
       var periodTag = r.isPeriod ? ' <span class="record-period">🩸</span>' : '';
-      return '<div class="record-row"><span class="record-values">' + parts.join(' / ') + periodTag + '</span></div>';
+      var bowelTag = (r.bowel > 0) ? ' <span class="bowel-badge">💩×' + r.bowel + '</span>' : '';
+      return '<div class="record-row"><span class="record-values">' + parts.join(' / ') + periodTag + bowelTag + '</span></div>';
     }).join('');
   }
 }
