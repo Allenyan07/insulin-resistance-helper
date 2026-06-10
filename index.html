@@ -716,7 +716,6 @@ body {
     <div class="chart-legend">
       <span><span class="dot" style="background:#5B8C85;"></span> 体重</span>
       <span><span class="dot" style="background:#E8A64C;"></span> 腰围</span>
-      <span><span class="dot" style="background:#D4786E;"></span> 经期</span>
     </div>
   </div>
   <!-- 经期 & 排便日历 -->
@@ -1680,32 +1679,9 @@ function renderBodyChart() {
   var labels = records.map(function(r) { return r.date.slice(5); });
   var weights = records.map(function(r) { return r.weight || null; });
   var waists = records.map(function(r) { return r.waist || null; });
-  var periodIdxs = [];
-  records.forEach(function(r, i) { if (r.isPeriod) periodIdxs.push(i); });
 
   var ctx = document.getElementById('bodyChart').getContext('2d');
   if (state.bodyChart) state.bodyChart.destroy();
-
-  var periodPlugin = {
-    id: 'periodMarkers',
-    afterDraw: function(chart) {
-      var ctx2 = chart.ctx;
-      var xAxis = chart.scales.x;
-      var yAxis = chart.scales.y;
-      periodIdxs.forEach(function(idx) {
-        var x = xAxis.getPixelForValue(idx);
-        ctx2.save();
-        ctx2.fillStyle = 'rgba(212, 120, 110, 0.12)';
-        var bw = xAxis.width / labels.length;
-        ctx2.fillRect(x - bw/2, yAxis.top, bw, yAxis.bottom - yAxis.top);
-        ctx2.fillStyle = '#D4786E';
-        ctx2.beginPath();
-        ctx2.arc(x, yAxis.bottom + 8, 4, 0, Math.PI * 2);
-        ctx2.fill();
-        ctx2.restore();
-      });
-    }
-  };
 
   state.bodyChart = new Chart(ctx, {
     type: 'line',
@@ -1720,25 +1696,14 @@ function renderBodyChart() {
       responsive: true, maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: function(ctx) {
-              var idx = ctx.dataIndex;
-              var label = ctx.dataset.label + ': ' + ctx.parsed.y;
-              if (periodIdxs.indexOf(idx) >= 0) label += ' 🩸';
-              return label;
-            }
-          }
-        }
+        legend: { display: false }
       },
       scales: {
         x: { grid: { display: false }, ticks: { font: { size: 11 } } },
         y: { type: 'linear', position: 'left', title: { display: true, text: '体重 (kg)', font: { size: 10 }, color: '#5B8C85' }, grid: { color: '#F0F0F5' }, ticks: { font: { size: 10 } } },
         y1: { type: 'linear', position: 'right', title: { display: true, text: '腰围 (cm)', font: { size: 10 }, color: '#E8A64C' }, grid: { drawOnChartArea: false }, ticks: { font: { size: 10 } } }
       }
-    },
-    plugins: [periodPlugin]
+    }
   });
 }
 
