@@ -441,7 +441,12 @@ body {
   width: 100%; padding: 10px 12px; border: 1.5px solid var(--separator);
   border-radius: 8px; font-size: 16px; font-family: var(--font);
   color: var(--text); background: var(--card); outline: none;
-  height: 44px; line-height: 1.2;
+  height: 44px; line-height: 1.2; box-sizing: border-box;
+}
+/* iOS date input 高度统一：去掉上下padding，用line-height撑高 */
+#bodyDate {
+  padding-top: 0; padding-bottom: 0;
+  line-height: 44px;
 }
 .form-field input:focus, .form-field select:focus { border-color: var(--primary); }
 
