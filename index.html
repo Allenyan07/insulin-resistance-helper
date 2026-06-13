@@ -1231,6 +1231,7 @@ function init() {
   initSettings();
   initBackup();
   initTabBar();
+  document.querySelector('.app-header h1').textContent = '📋 每日要点'; // 初始页签标题
   initFoodSearch();
   initExerciseTracking();
   initBodyRecords();
@@ -1257,6 +1258,10 @@ function switchTab(tab) {
       el.classList.toggle('active', el.id === 'panel-' + tab);
     }
   });
+  // 更新顶部页签标题
+  var titles = { daily: '📋 每日要点', food: '🥗 食物查询', exercise: '🏃 运动记录', body: '📊 身体记录', ai: '🤖 AI助手' };
+  var h1 = document.querySelector('.app-header h1');
+  if (h1) h1.textContent = titles[tab] || '📋 胰岛素抵抗管理';
   if (tab === 'body') { renderBodyChart(); renderBodyCalendar(); }
   // AI面板键盘自适应：切到AI时立即校准位置
   if (tab === 'ai' && window.visualViewport) {
